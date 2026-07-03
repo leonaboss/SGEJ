@@ -1,0 +1,41 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}Contrapartes en Litigio - SGEJ{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Contrapartes en Litigio</h5>
+        <div>
+            <form method="post" action="{% url 'expedientes:importar_excel' 'LitigioContraparte' %}" enctype="multipart/form-data" class="d-inline">
+                {% csrf_token %}
+                <label class="btn btn-outline-warning btn-sm mb-0"><i class="bi bi-upload me-1"></i>Importar Excel
+                    <input type="file" name="archivo" accept=".xlsx,.xls" hidden onchange="this.form.submit()">
+                </label>
+            </form>
+            <a href="{% url 'expedientes:exportar_contrapartes' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i>Exportar Excel</a>
+            <a href="{% url 'expedientes:litigiocontraparte_create' %}" class="btn btn-dark btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo</a>
+        </div>
+    </div>
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark"><tr><th>Expediente</th><th>Nombre</th><th>Datos Contacto</th><th>Es Abogado</th><th>Acciones</th></tr></thead>
+                <tbody>
+                    {% for c in contrapartes %}
+                    <tr>
+                        <td>{{ c.expediente }}</td>
+                        <td>{{ c.nombre_abogado }}</td>
+                        <td>{{ c.datos_contacto|default:"-" }}</td>
+                        <td>{% if c.es_abogado %}<span class="badge bg-success">Sí</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+                        <td>
+                            <a href="{% url 'expedientes:litigiocontraparte_update' c.pk %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
+                            <form method="post" action="{% url 'expedientes:litigiocontraparte_delete' c.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar esta contraparte?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button></form>
+                        </td>
+                    </tr>
+                    {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No hay contrapartes registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends 'base_module_list.html' %}
+{% block title %}Litigios | SGEJ{% endblock %}
+{% block module_title %}Gestión de Litigios{% endblock %}
+{% block search_placeholder %}Buscar por Demanda...{% endblock %}
+{% block table_headers %}
+<th>Tipo de Demanda</th>
+<th>Fecha de Demanda</th>
+<th>Estatus</th>
+<th>Tribunal</th>
+{% endblock %}
+{% block table_cells %}
+<td>{{ exp.tipo_demanda|default:"-" }}</td>
+<td>{{ exp.fecha_demanda|date:"d M Y"|default:"-" }}</td>
+<td>{% include 'components/estatus_badge.html' with estatus=exp.estatus %}</td>
+<td>{{ exp.tribunal.nombre|default:"-" }}</td>
+{% endblock %}
+{% block empty_message %}No se encontraron litigios registrados.{% endblock %}

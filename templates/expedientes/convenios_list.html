@@ -1,0 +1,19 @@
+{% extends 'base_module_list.html' %}
+{% block title %}Convenios | SGEJ{% endblock %}
+{% block module_title %}Contrataciones y Convenios{% endblock %}
+{% block search_placeholder %}Buscar institución...{% endblock %}
+{% block table_headers %}
+<th>Institución</th>
+<th>Año</th>
+<th>Duración</th>
+<th>Tipo de Convenio</th>
+<th>Fecha de Vencimiento</th>
+{% endblock %}
+{% block table_cells %}
+<td><span class="fw-semibold">{{ exp.institucion|default:"-" }}</span></td>
+<td>{{ exp.ano|default:"-" }}</td>
+<td>{{ exp.duracion|default:"-" }}</td>
+<td>{{ exp.tipo_convenio|default:"-"|truncatechars:50 }}</td>
+<td>{{ exp.fecha_vencimiento|date:"d M Y"|default:"-" }}</td>
+{% endblock %}
+{% block empty_message %}No se encontraron convenios registrados.{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'base_module_list.html' %}
+{% block title %}Inspectoría | SGEJ{% endblock %}
+{% block module_title %}Casos de Inspectoría / Horas Extra{% endblock %}
+{% block search_placeholder %}Buscar...{% endblock %}
+{% block table_headers %}
+<th>N° Expediente</th>
+<th>Nombre y Apellido</th>
+<th>Cédula</th>
+<th>Motivo</th>
+<th>Fecha Registro</th>
+{% endblock %}
+{% block table_cells %}
+<td><span class="fw-semibold">{{ exp.numero_expediente }}</span></td>
+<td>{{ exp.personal.get_full_name|default:"-" }}</td>
+<td>{{ exp.personal.cedula|default:"-" }}</td>
+<td>{{ exp.motivo.descripcion|default:"-"|truncatechars:50 }}</td>
+<td>{{ exp.fecha_registro|date:"d M Y"|default:"-" }}</td>
+{% endblock %}
+{% block empty_message %}No se encontraron casos de inspectoría.{% endblock %}

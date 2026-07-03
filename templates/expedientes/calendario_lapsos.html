@@ -1,0 +1,141 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}Lapsos y Agenda Procesal - SGEJ{% endblock %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+<style>
+  #calendar { max-width: 100%; margin: 0 auto; }
+  .fc-event { cursor: pointer; }
+  .fc-event-title { font-weight: 600; }
+  .badge-evento { font-size: 0.75rem; padding: 0.25em 0.6em; border-radius: 4px; color: #fff; }
+  .badge-AUD { background: #0d6efd; }
+  .badge-LAPS { background: #198754; }
+  .badge-VENC { background: #dc3545; }
+  .badge-REC { background: #6f42c1; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-calendar-range me-2"></i>Lapsos y Agenda Procesal</h4>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="badge-evento badge-AUD me-1">Audiencia</span>
+      <span class="badge-evento badge-LAPS me-1">Lapso</span>
+      <span class="badge-evento badge-VENC me-1">Vencimiento</span>
+      <span class="badge-evento badge-REC me-1">Recordatorio</span>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <div id="calendar"></div>
+    </div>
+  </div>
+
+  {% if eventos %}
+  <div class="card shadow-sm border-0 mt-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-list-ul me-2"></i>Próximos Eventos</span>
+      <a href="{% url 'expedientes:audiencia_list' %}" class="btn btn-sm btn-outline-light">Ver todos</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light"><tr><th>Título</th><th>Tipo</th><th>Fecha/Hora</th><th>Lugar</th><th>Expediente</th><th>Abogado</th><th>Alertas</th></tr></thead>
+        <tbody>
+          {% for e in eventos|slice:":20" %}
+          <tr>
+            <td>{{ e.titulo }}</td>
+            <td><span class="badge-evento badge-{{ e.tipo_evento }}">{{ e.get_tipo_evento_display }}</span></td>
+            <td>{{ e.fecha_hora|date:"d/m/Y H:i" }}</td>
+            <td>{{ e.lugar|default:"-" }}</td>
+            <td>{{ e.expediente.numero_expediente }}</td>
+            <td>{{ e.usuario.get_full_name|default:"-" }}</td>
+            <td>
+              {% if e.alerta_email %}<span class="badge bg-info me-1" title="Correo"><i class="bi bi-envelope"></i></span>{% endif %}
+              {% if e.alerta_sms %}<span class="badge bg-warning text-dark" title="SMS"><i class="bi bi-chat-dots"></i></span>{% endif %}
+              {% if not e.alerta_email and not e.alerta_sms %}<span class="text-muted">-</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal de detalle del evento -->
+<div class="modal fade" id="eventoModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>Detalle del Evento</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="eventoModalBody">
+        <div class="text-center py-4"><div class="spinner-border"></div></div>
+      </div>
+      <div class="modal-footer">
+        <a href="#" id="eventoEditLink" class="btn btn-outline-dark"><i class="bi bi-pencil me-1"></i>Editar</a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales-all.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var calendarEl = document.getElementById('calendar');
+  var calendar = new FullCalendar.Calendar(calendarEl, {
+    locale: 'es',
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+    },
+    buttonText: {
+      today: 'Hoy',
+      month: 'Mes',
+      week: 'Semana',
+      day: 'Día',
+      list: 'Lista'
+    },
+    height: 'auto',
+    events: '{% url "expedientes:calendario_eventos_json" %}',
+    eventClick: function(info) {
+      try {
+        var p = info.event.extendedProps;
+        var fecha = info.event.start ? new Date(info.event.start).toLocaleString() : '-';
+        var html = '<div class="row g-3">';
+        html += '<div class="col-md-6"><strong>Título:</strong><br>' + info.event.title + '</div>';
+        html += '<div class="col-md-3"><strong>Tipo:</strong><br><span class="badge-evento badge-' + p.codigo + '">' + p.tipo + '</span></div>';
+        html += '<div class="col-md-3"><strong>Expediente:</strong><br>' + (p.expediente || '-') + '</div>';
+        html += '<div class="col-md-6"><strong>Fecha/Hora:</strong><br>' + fecha + '</div>';
+        html += '<div class="col-md-3"><strong>Lugar:</strong><br>' + (p.lugar || '-') + '</div>';
+        html += '<div class="col-md-3"><strong>Abogado:</strong><br>' + (p.abogado || 'Sin asignar') + '</div>';
+        if (p.descripcion) {
+          html += '<div class="col-12"><strong>Descripción:</strong><br>' + p.descripcion + '</div>';
+        }
+        html += '<div class="col-12"><hr><strong>Estado de Alertas</strong><div class="mt-2">';
+        html += '<span class="me-3"><i class="bi bi-envelope"></i> Correo: ' + (p.alerta_email ? '✓ Activo' : '✗ Inactivo') + '</span>';
+        html += '<span class="me-3"><i class="bi bi-chat-dots"></i> SMS: ' + (p.alerta_sms ? '✓ Activo' : '✗ Inactivo') + '</span>';
+        html += '<br><small class="text-muted">Notif. 30d: ' + (p.notificado_30 ? '✓' : '✗') + ' | 60d: ' + (p.notificado_60 ? '✓' : '✗') + ' | 90d: ' + (p.notificado_90 ? '✓' : '✗') + '</small>';
+        html += '</div></div></div>';
+        document.getElementById('eventoModalBody').innerHTML = html;
+        document.getElementById('eventoEditLink').href = '{% url "expedientes:audiencia_update" 99999 %}'.replace('99999', info.event.id);
+        var modal = new bootstrap.Modal(document.getElementById('eventoModal'));
+        modal.show();
+      } catch(e) {
+        console.error('Error al mostrar evento:', e);
+        alert('Error al cargar detalles del evento.');
+      }
+    }
+  });
+  calendar.render();
+});
+</script>
+{% endblock %}

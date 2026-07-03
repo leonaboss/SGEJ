@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+    <h2>SGEJ - Credenciales de Acceso</h2>
+    <p>Hola <strong>{{ usuario.get_full_name }}</strong>,</p>
+    <p>Se han generado sus credenciales de acceso al Sistema de Gestor de Expedientes Jurídicos.</p>
+    <ul>
+        <li><strong>Usuario:</strong> {{ usuario.usuario }}</li>
+        <li><strong>Contraseña temporal:</strong> {{ password_temporal }}</li>
+        <li><strong>Entorno:</strong> {{ entorno }}</li>
+    </ul>
+    <p>Por seguridad, cambie su contraseña en el primer inicio de sesión.</p>
+    <p>Atentamente,<br>Administración SGEJ</p>
+</body>
+</html>

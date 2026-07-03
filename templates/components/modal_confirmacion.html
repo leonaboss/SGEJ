@@ -1,0 +1,24 @@
+<div class="modal fade modal-sgej" id="modalConfirmacionSeguridad" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-shield-lock-fill me-2"></i>Confirmación de Seguridad Requerida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <p class="mb-3 text-muted">Para ejecutar <strong id="modal-action-label">esta acción</strong> sobre el registro legal seleccionado, introduzca o confirme el nombre exacto de la entidad o archivo afectado para validar la consistencia:</p>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase" for="inputNombreValidacionArchivo">Validación del Recurso:</label>
+                    <input type="text" class="form-control sgej-search-input w-100" id="inputNombreValidacionArchivo" placeholder="Escriba el identificador para confirmar" autocomplete="off">
+                </div>
+                <div class="alert alert-warning mb-0 small border-warning bg-warning bg-opacity-10" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>Esta operación se registrará de forma irrevocable en la bitácora inmutable de auditoría del sistema con su dirección IP asociada.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abortar Acción</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarAccionCritica" disabled>Ejecutar y Registrar Transacción</button>
+            </div>
+        </div>
+    </div>
+</div>

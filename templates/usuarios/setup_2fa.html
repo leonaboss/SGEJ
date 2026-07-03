@@ -1,0 +1,35 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}Configurar 2FA — SGEJ{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-4 text-center">
+                    <h5 class="fw-bold mb-3">Configurar Autenticación de Dos Factores</h5>
+                    <p class="text-muted small">Escanee el código QR con su aplicación de autenticación (Google Authenticator, Authy, etc.).</p>
+                    {% if qr_code %}
+                    <div class="mb-3">
+                        <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code 2FA" class="img-fluid" style="max-width: 220px;">
+                    </div>
+                    <p class="small text-muted">O ingrese manualmente la clave: <code>{{ secret_key }}</code></p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="device_id" value="{{ device_id }}">
+                        <div class="mb-3">
+                            <input type="text" name="token" class="form-control form-control-lg text-center"
+                                   placeholder="000000" maxlength="6" inputmode="numeric"
+                                   pattern="[0-9]{6}" required>
+                        </div>
+                        <button type="submit" class="btn btn-dark w-100">Verificar y Activar</button>
+                    </form>
+                    {% endif %}
+                    <div class="mt-3">
+                        <a href="{% url 'usuarios:profile' %}" class="text-decoration-none small">Cancelar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

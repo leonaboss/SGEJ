@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}{{ documento.nombre_original }} - SGEJ{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>{{ documento.nombre_original }}</h5>
+                    <a href="{% url 'documentos:documento_download' documento.pk %}" class="btn btn-sm btn-light" target="_blank">
+                        <i class="bi bi-eye me-1"></i>Ver Documento
+                    </a>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr><th class="w-25">Nombre Original</th><td>{{ documento.nombre_original }}</td></tr>
+                        <tr><th>Tipo MIME</th><td><span class="badge bg-secondary">{{ documento.tipo_mime }}</span></td></tr>
+                        <tr><th>Expediente</th><td>{{ documento.expediente.numero_expediente|default:"-" }}</td></tr>
+                        <tr><th>Versión</th><td>{{ documento.version }}</td></tr>
+                        <tr><th>Es Plantilla</th><td>{% if documento.es_plantilla %}<i class="bi bi-check-circle-fill text-success"></i> Sí{% else %}No{% endif %}</td></tr>
+                        <tr><th>Hash SHA-256</th><td><code class="small">{{ documento.hash_sha256 }}</code></td></tr>
+                        <tr><th>QR Content</th><td><code class="small">{{ documento.qr_code_content|default:"-" }}</code></td></tr>
+                        <tr><th>Subido por</th><td>{{ documento.created_by.get_full_name }}</td></tr>
+                        <tr><th>Fecha</th><td>{{ documento.created_at|date:"d/m/Y H:i" }}</td></tr>
+                    </table>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'documentos:documento_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

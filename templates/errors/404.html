@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Página no encontrada - SGEJ{% endblock %}
+{% block content %}
+<div class="container-fluid py-5 text-center">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <h1 class="display-1 text-muted fw-bold">404</h1>
+            <h3 class="mb-3">Página no encontrada</h3>
+            <p class="text-muted mb-4">La página que buscas no existe o ha sido movida.</p>
+            <a href="{% url 'expedientes:dashboard' %}" class="btn btn-primary">
+                <i class="bi bi-house-door me-2"></i>Volver al Inicio
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

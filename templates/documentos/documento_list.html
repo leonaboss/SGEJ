@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Documentos - SGEJ{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Repositorio de Documentos</h4>
+        <div class="d-flex gap-2">
+            <a href="{% url 'documentos:documento_upload' %}" class="btn btn-success"><i class="bi bi-upload me-2"></i>Subir Documento</a>
+        </div>
+    </div>
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="get" class="row g-2 mb-3">
+                <div class="col-md-8">
+                    <input type="text" name="q" class="form-control" placeholder="Buscar por nombre de archivo..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-2">
+                    <select name="tipo" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="documentos" {% if tipo_filter == 'documentos' %}selected{% endif %}>Documentos</option>
+                        <option value="plantillas" {% if tipo_filter == 'plantillas' %}selected{% endif %}>Plantillas</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                </div>
+            </form>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre Original</th>
+                            <th>Tipo</th>
+                            <th>Expediente</th>
+                            <th>Versión</th>
+                            <th>Plantilla</th>
+                            <th>Subido por</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in documentos %}
+                        <tr>
+                            <td>{{ doc.nombre_original }}</td>
+                            <td><span class="badge bg-secondary">{{ doc.tipo_mime }}</span></td>
+                            <td>{{ doc.expediente.numero_expediente|default:"-" }}</td>
+                            <td>{{ doc.version }}</td>
+                            <td>{% if doc.es_plantilla %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-muted"></i>{% endif %}</td>
+                            <td>{{ doc.created_by.get_full_name }}</td>
+                            <td>{{ doc.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <a href="{% url 'documentos:documento_download' doc.pk %}" class="btn btn-sm btn-outline-success" title="Descargar" target="_blank">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <a href="{% url 'documentos:documento_detail' doc.pk %}" class="btn btn-sm btn-outline-info" title="Detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'documentos:documento_update' doc.pk %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="post" action="{% url 'documentos:documento_delete' doc.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este documento?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center text-muted py-4">No hay documentos registrados.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if is_paginated %}
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

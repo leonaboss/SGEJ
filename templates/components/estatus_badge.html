@@ -1,0 +1,13 @@
+{% if estatus == 'RECIBIDO' %}
+<span class="badge bg-info bg-opacity-10 text-info border border-info">Recibido</span>
+{% elif estatus == 'EN_ANALISIS' %}
+<span class="badge bg-warning bg-opacity-10 text-warning border border-warning">En Análisis</span>
+{% elif estatus == 'FIRMA' %}
+<span class="badge bg-dark bg-opacity-10 text-dark border border-dark">En Firma</span>
+{% elif estatus == 'DESPACHADO' %}
+<span class="badge bg-success bg-opacity-10 text-success border border-success">Despachado</span>
+{% elif estatus == 'ARCHIVADO' %}
+<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary">Archivado</span>
+{% else %}
+<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary">{{ estatus }}</span>
+{% endif %}

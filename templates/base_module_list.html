@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ module_name }} | SGEJ{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small bg-transparent mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'expedientes:dashboard' %}" class="text-decoration-none">Inicio</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ module_name }}</li>
+    </ol>
+</nav>
+
+{% block before_table %}{% endblock %}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2 py-3 px-3">
+        <h3 class="h5 fw-bold mb-0">{% block module_title %}Expedientes{% endblock %}</h3>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+                <input type="text" name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="{% block search_placeholder %}Buscar...{% endblock %}" style="width:180px;">
+                {% if mostrar_filtro_estatus %}
+                <select name="estatus" class="form-select form-select-sm" style="width:auto;">
+                    <option value="">Todos los estatus</option>
+                    {% for val, label in estatus_choices %}
+                    <option value="{{ val }}" {% if estatus_filter == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+                <button class="btn btn-dark btn-sm" type="submit"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+                <a href="{% url 'expedientes:modulo_list' tipo_modulo=tipo_modulo %}" class="btn btn-outline-danger btn-sm" title="Quitar todos los filtros aplicados"><i class="bi bi-eraser me-1"></i>Quitar filtros</a>
+            </form>
+            <a href="{% url 'expedientes:expediente_create' %}?tipo_modulo={{ tipo_modulo }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo</a>
+            <form method="post" action="{% url 'expedientes:importar_excel' 'Expediente' %}" enctype="multipart/form-data" class="d-inline">
+                {% csrf_token %}
+                <label class="btn btn-outline-warning btn-sm mb-0"><i class="bi bi-upload me-1"></i>Importar
+                    <input type="file" name="archivo" accept=".xlsx,.xls" hidden onchange="this.form.submit()">
+                </label>
+            </form>
+            <a href="{% url 'expedientes:exportar_expedientes' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i>Exportar</a>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    {% block table_headers %}{% endblock %}
+                    <th class="text-center" style="width: 70px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in expedientes %}
+                <tr>
+                    {% block table_cells %}{% endblock %}
+                    <td class="text-center">
+                        <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="100">
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox fs-1 text-muted"></i>
+                            <p class="text-muted mt-2">{% block empty_message %}No se encontraron registros.{% endblock %}</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if is_paginated %}
+    <div class="card-footer bg-white border-top d-flex justify-content-center py-3">
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&estatus={{ estatus_filter }}"><i class="bi bi-chevron-left"></i> Anterior</a></li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&estatus={{ estatus_filter }}">Siguiente <i class="bi bi-chevron-right"></i></a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

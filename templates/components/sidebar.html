@@ -1,0 +1,117 @@
+{% load static rbac_tags %}
+
+<aside id="sgej-sidebar" class="sgej-sidebar">
+    <!-- Bloque de Perfil -->
+    <div class="sidebar-profile">
+        {% include 'components/user_avatar.html' with user=request.user size=70 class='sidebar-profile-photo text-white' %}
+        <div class="sidebar-profile-name">{{ request.user.get_full_name }}</div>
+        <div class="sidebar-profile-role">
+            <span>{{ request.user.get_rol_display_label }}</span>
+            <button id="sidebar-toggle" class="sidebar-hamburger-btn" aria-label="Abrir menú lateral">
+                <i class="bi bi-list"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Navegación -->
+    <ul class="sidebar-nav">
+        <!-- Inicio -->
+        <li class="sidebar-nav-item">
+            <a href="{% url 'expedientes:dashboard' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="bi bi-house-door-fill"></i>
+                <span>Inicio</span>
+            </a>
+        </li>
+        
+        <div class="sidebar-section-label">Módulos Operativos</div>
+        
+        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="DESP" icon="bi bi-person-x-fill" label="Calificación de Despido" active_module="modulo/DESP" required_roles="ADMIN,ABOG" %}
+        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="INSP" icon="bi bi-briefcase-fill" label="Inspectoría del Trabajo" active_module="modulo/INSP" required_roles="ADMIN,ABOG" %}
+        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="OFIC" icon="bi bi-folder-fill" label="Oficina Jurídica" active_module="modulo/OFIC" required_roles="ADMIN,ABOG" %}
+        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="CONT" icon="bi bi-journal-text" label="Convenios UPTAG" active_module="modulo/CONT" required_roles="ADMIN,ABOG" %}
+        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="LITI" icon="bi bi-bank" label="Litigios" active_module="modulo/LITI" required_roles="ADMIN,ABOG" %}
+        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="SUST" icon="bi bi-shield-exclamation" label="Sustanciación" active_module="modulo/SUST" required_roles="ADMIN,ABOG" %}
+        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="IND" icon="bi bi-list-check" label="Índices Inspectoría" active_module="modulo/IND" required_roles="ADMIN,ABOG" %}
+        
+        {% sidebar_item url="expedientes:calendario_lapsos" icon="bi bi-calendar-range" label="Lapsos y Agenda Procesal" active_module="calendario" required_roles="ADMIN,ABOG" %}
+        
+        <div class="sidebar-section-label">Documentos y Consultas</div>
+        <li class="sidebar-nav-item">
+            <a href="{% url 'documentos:documento_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'documento_list' %}active{% endif %}">
+                <i class="bi bi-file-earmark-pdf"></i>
+                <span>Documentos</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{% url 'biblioteca:lista' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'lista' %}active{% endif %}">
+                <i class="bi bi-book-half"></i>
+                <span>Biblioteca Normativa</span>
+            </a>
+        </li>
+        
+        <!-- Zona Administrativa (Solo ADMIN y ABOG) -->
+        {% if request.user|has_role:'ADMIN,ABOG' %}
+        <hr class="sidebar-divider">
+        <div class="sidebar-section-label">Administración</div>
+        <li class="sidebar-nav-item">
+            <a href="{% url 'usuarios:usuario_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'usuario_list' %}active{% endif %}">
+                <i class="bi bi-people-fill"></i>
+                <span>Usuarios</span>
+            </a>
+        </li>
+        {% if request.user|has_role:'ADMIN' %}
+        <li class="sidebar-nav-item">
+            <a href="{% url 'usuarios:bitacora_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'bitacora_list' %}active{% endif %}">
+                <i class="bi bi-journal-code"></i>
+                <span>Bitácora de Auditoría</span>
+            </a>
+        </li>
+        {% endif %}
+        <div class="sidebar-section-label">Catálogos</div>
+        <li class="sidebar-nav-item">
+            <a href="{% url 'expedientes:personal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'personal_list' %}active{% endif %}">
+                <i class="bi bi-person-badge"></i>
+                <span>Personal</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{% url 'expedientes:cargo_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'cargo_list' %}active{% endif %}">
+                <i class="bi bi-briefcase"></i>
+                <span>Cargos</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{% url 'expedientes:motivo_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'motivo_list' %}active{% endif %}">
+                <i class="bi bi-list-ul"></i>
+                <span>Motivos</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
+            <a href="{% url 'expedientes:tribunal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'tribunal_list' %}active{% endif %}">
+                <i class="bi bi-bank"></i>
+                <span>Tribunales</span>
+            </a>
+        </li>
+            <li class="sidebar-nav-item">
+                <a href="{% url 'expedientes:sujetoprocesal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'sujetoprocesal_list' %}active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>Sujetos Procesales</span>
+                </a>
+            </li>
+            <div class="sidebar-section-label">Registro de Actividad</div>
+        <li class="sidebar-nav-item">
+            <a href="{% url 'expedientes:actuacion_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'actuacion_list' %}active{% endif %}">
+                <i class="bi bi-journal-text"></i>
+                <span>Actuaciones</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+    
+    <!-- Footer Sidebar -->
+    <div class="p-3 mt-auto">
+        <a href="{% url 'usuarios:logout' %}" class="btn btn-outline-light w-100 btn-sm text-start" style="border-color: var(--color-sidebar-border); color: var(--color-sidebar-text);">
+            <i class="bi bi-box-arrow-right me-2"></i> Cerrar Sesión
+        </a>
+    </div>
+</aside>

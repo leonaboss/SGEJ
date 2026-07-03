@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard | SGEJ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 fw-bold text-dark mb-0">Panel General de Expedientes</h2>
+    <span class="text-muted small"><i class="bi bi-clock-history me-1"></i> Actualización en tiempo real</span>
+</div>
+
+<!-- Grid de Cards Reactivas -->
+<div class="sgej-cards-grid">
+    {% include 'components/card_counter.html' with title="Calificación de Despido" count_id="count-despido" bg_class="bg-desp" icon_class="bi bi-person-x-fill" tipo_modulo="DESP" %}
+    
+    {% include 'components/card_counter.html' with title="Casos Inspectoría" count_id="count-inspectoria" bg_class="bg-insp" icon_class="bi bi-briefcase-fill" tipo_modulo="INSP" %}
+    
+    {% include 'components/card_counter.html' with title="En Oficina Jurídica" count_id="count-oficina" bg_class="bg-ofic" icon_class="bi bi-folder-fill" tipo_modulo="OFIC" %}
+    
+    {% include 'components/card_counter.html' with title="Convenios UPTAG" count_id="count-convenios" bg_class="bg-cont" icon_class="bi bi-journal-text" tipo_modulo="CONT" %}
+    
+    {% include 'components/card_counter.html' with title="Litigios Activos" count_id="count-litigios" bg_class="bg-liti" icon_class="bi bi-bank" tipo_modulo="LITI" %}
+    
+    {% include 'components/card_counter.html' with title="Sustanciación Disciplinaria" count_id="count-sustanciacion" bg_class="bg-sust" icon_class="bi bi-shield-exclamation" tipo_modulo="SUST" %}
+    
+    {% include 'components/card_counter.html' with title="Índices Inspectoría" count_id="count-indices" bg_class="bg-ind" icon_class="bi bi-list-check" tipo_modulo="IND" %}
+
+    {% include 'components/card_counter.html' with title="Actuaciones Procesales" count_id="count-actuaciones" bg_class="bg-act" icon_class="bi bi-journal-check" link_url='expedientes:actuacion_list' link_param=None %}
+</div>
+
+<!-- Alertas Críticas (Vencimientos) -->
+{% if alertas_vencimiento %}
+<div class="mb-4">
+    <h5 class="h6 fw-bold text-danger mb-3"><i class="bi bi-exclamation-circle-fill me-2"></i>Alertas de Vencimiento de Convenios</h5>
+    <div class="row">
+        {% for convenio in alertas_vencimiento %}
+        <div class="col-md-6 mb-2">
+            <div class="sgej-alert-vencimiento d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>{{ convenio.institucion|default:"Institución no especificada" }}</strong>
+                    <div class="text-muted small">Vence el: {{ convenio.fecha_vencimiento|date:"d M Y" }}</div>
+                </div>
+                <a href="{% url 'expedientes:expediente_detail' convenio.pk %}" class="btn btn-sm btn-outline-danger">Ver</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Tabla Historial Reciente -->
+<div class="sgej-table-container mt-2">
+    <div class="sgej-table-header">
+        <h3 class="sgej-table-title">Actividad Reciente Global</h3>
+        <div class="sgej-search-bar">
+            <i class="bi bi-search text-muted"></i>
+            <input type="text" id="search-historial" class="form-control sgej-search-input" placeholder="Filtrar historial...">
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="sgej-table" id="table-historial">
+            <thead>
+                <tr>
+                    <th>ID Expediente</th>
+                    <th>Módulo</th>
+                    <th>Personal Involucrado</th>
+                    <th>Estatus</th>
+                    <th>Fecha Registro</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in historial_reciente %}
+                <tr>
+                    <td><span class="fw-bold">{{ exp.numero_expediente }}</span></td>
+                    <td>
+                        <span class="badge bg-light text-dark border">{{ exp.get_tipo_modulo_display }}</span>
+                    </td>
+                    <td>
+                        {% if exp.personal %}
+                        {{ exp.personal.get_full_name }} <br>
+                        <small class="text-muted">CI: {{ exp.personal.cedula }}</small>
+                        {% else %}
+                        <span class="text-muted fst-italic">No aplica</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if exp.estatus == 'RECIBIDO' %}
+                        <span class="sgej-badge sgej-badge-recibido">Recibido</span>
+                        {% elif exp.estatus == 'EN_ANALISIS' %}
+                        <span class="sgej-badge sgej-badge-analisis">En Análisis</span>
+                        {% elif exp.estatus == 'FIRMA' %}
+                        <span class="sgej-badge sgej-badge-firma">En Firma</span>
+                        {% elif exp.estatus == 'DESPACHADO' %}
+                        <span class="sgej-badge sgej-badge-despachado">Despachado</span>
+                        {% else %}
+                        <span class="sgej-badge sgej-badge-archivado">{{ exp.get_estatus_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ exp.created_at|date:"d M Y, h:i A" }}</td>
+                    <td>
+                        <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn-action" title="Ver Detalle">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="sgej-empty-state">
+                            <i class="bi bi-inbox"></i>
+                            <p>No hay actividad registrada en el sistema.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

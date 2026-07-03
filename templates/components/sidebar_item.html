@@ -1,0 +1,8 @@
+{% if is_visible %}
+<li class="sidebar-nav-item">
+    <a class="sidebar-nav-link{% if is_active %} active{% endif %}" href="{{ url }}">
+        <i class="bi {{ icon }} me-2"></i>
+        <span>{{ label }}</span>
+    </a>
+</li>
+{% endif %}

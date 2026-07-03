@@ -1,0 +1,17 @@
+{% comment %}
+  Avatar de usuario.
+  Uso: {% include 'components/user_avatar.html' with user=request.user size=32 class='me-2' %}
+  Parámetros:
+    user:  User object (requerido)
+    size:  Tamaño en px (default 32)
+    class: Clases extra
+{% endcomment %}
+{% if user.foto_perfil %}
+<img src="{{ user.foto_perfil.url }}"
+     alt=""
+     class="rounded-circle {{ class }}"
+     style="width:{{ size|default:32 }}px;height:{{ size|default:32 }}px;object-fit:cover;"
+     onerror="this.style.display='none'">
+{% else %}
+<i class="bi bi-person-circle {{ class }}" style="font-size:{{ size|default:32 }}px;"></i>
+{% endif %}

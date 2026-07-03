@@ -1,0 +1,13 @@
+{% if link_url %}
+<a href="{% url link_url %}" class="sgej-count-card text-decoration-none">
+{% else %}
+<a href="{% url 'expedientes:modulo_list' tipo_modulo=tipo_modulo %}" class="sgej-count-card text-decoration-none">
+{% endif %}
+    <div class="sgej-count-card-info">
+        <h6>{{ title }}</h6>
+        <div class="sgej-count-card-number" id="{{ count_id }}">0</div>
+    </div>
+    <div class="sgej-count-card-icon {{ bg_class }}">
+        <i class="{{ icon_class }}"></i>
+    </div>
+</a>

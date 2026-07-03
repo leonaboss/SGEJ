@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios - SGEJ{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0"><i class="bi bi-people me-2"></i>Gestión de Usuarios</h4>
+        <div class="d-flex gap-2">
+            <a href="{% url 'usuarios:usuario_create' %}" class="btn btn-success"><i class="bi bi-person-plus me-2"></i>Nuevo Usuario</a>
+        </div>
+    </div>
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="get" class="row g-2 mb-3">
+                <div class="col-md-8">
+                    <input type="text" name="q" class="form-control" placeholder="Buscar por usuario, nombre, cédula..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-2">
+                    <select name="rol" class="form-select">
+                        <option value="">Todos los roles</option>
+                        {% for key, val in roles %}
+                        <option value="{{ key }}" {% if rol_filter == key %}selected{% endif %}>{{ val }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                </div>
+            </form>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th></th>
+                            <th>Usuario</th>
+                            <th>Nombre</th>
+                            <th>Cédula</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>2FA</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in usuarios %}
+                        <tr>
+                            <td>{% include 'components/user_avatar.html' with user=u size=32 %}</td>
+                            <td><strong>{{ u.usuario }}</strong></td>
+                            <td>{{ u.get_full_name }}</td>
+                            <td>{{ u.cedula }}</td>
+                            <td><span class="badge bg-info">{{ u.get_rol_display_label }}</span></td>
+                            <td>
+                                {% if u.is_bloqueado %}
+                                    <span class="badge bg-danger">Bloqueado</span>
+                                {% else %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if u.is_2fa_enabled %}
+                                    <span class="badge bg-success"><i class="bi bi-shield-check"></i></span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="bi bi-shield-x"></i></span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'usuarios:usuario_update' u.pk %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="post" action="{% url 'usuarios:usuario_toggle_block' u.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    {% if u.is_bloqueado %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Desbloquear">
+                                            <i class="bi bi-unlock"></i>
+                                        </button>
+                                    {% else %}
+                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Bloquear">
+                                            <i class="bi bi-lock"></i>
+                                        </button>
+                                    {% endif %}
+                                </form>
+                                <form method="post" action="{% url 'usuarios:usuario_delete' u.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar permanentemente este usuario?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center text-muted py-4">No hay usuarios registrados.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if is_paginated %}
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}Notificaciones — SGEJ{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-bell me-2"></i>Notificaciones {% if no_leidas %}<span class="badge bg-danger">{{ no_leidas }}</span>{% endif %}</h5>
+        <div>
+            <form method="post" action="{% url 'expedientes:importar_excel' 'Notificacion' %}" enctype="multipart/form-data" class="d-inline">
+                {% csrf_token %}
+                <label class="btn btn-outline-warning btn-sm mb-0"><i class="bi bi-upload me-1"></i>Importar Excel
+                    <input type="file" name="archivo" accept=".xlsx,.xls" hidden onchange="this.form.submit()">
+                </label>
+            </form>
+        </div>
+    </div>
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark"><tr><th>Mensaje</th><th>Tipo</th><th>Estado</th><th>Fecha</th></tr></thead>
+                <tbody>
+                    {% for n in notificaciones %}
+                    <tr class="{% if not n.leido %}table-active fw-semibold{% endif %}">
+                        <td>{{ n.mensaje }}</td>
+                        <td><span class="badge bg-secondary">{{ n.tipo_alerta }}</span></td>
+                        <td>{% if n.leido %}<span class="text-muted small">Leído</span>{% else %}
+                            <form method="post" action="{% url 'expedientes:notificacion_marcar_leida' n.pk %}" class="d-inline">
+                                {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-dark">Marcar leído</button>
+                            </form>{% endif %}
+                        </td>
+                        <td><small>{{ n.fecha_creacion|date:"d/m/Y H:i" }}</small></td>
+                    </tr>
+                    {% empty %}<tr><td colspan="4" class="text-center text-muted py-4">No hay notificaciones.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Expediente {{ expediente.numero_expediente }} | SGEJ{% endblock %}
+
+{% block content %}
+<div class="sgej-breadcrumb">
+    <a href="{% url 'expedientes:dashboard' %}">Inicio</a>
+    <span class="sgej-breadcrumb-separator">/</span>
+    <a href="{% url 'expedientes:modulo_list' tipo_modulo=expediente.tipo_modulo %}">{{ expediente.get_tipo_modulo_display }}</a>
+    <span class="sgej-breadcrumb-separator">/</span>
+    <span>{{ expediente.numero_expediente }}</span>
+</div>
+
+<div class="row">
+    <!-- Columna Izquierda: Datos del Expediente -->
+    <div class="col-lg-4 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                <h5 class="fw-bold mb-1">Expediente {{ expediente.numero_expediente }}</h5>
+                <span class="badge bg-light text-dark border">{{ expediente.get_tipo_modulo_display }}</span>
+                {% if expediente.is_archivado %}
+                    <span class="badge bg-danger ms-1">Archivado</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush text-sm">
+                    <li class="list-group-item px-0">
+                        <span class="text-muted d-block small fw-bold">Estatus Actual</span>
+                        <span>{{ expediente.get_estatus_display }}</span>
+                    </li>
+                    {% if expediente.personal %}
+                    <li class="list-group-item px-0">
+                        <span class="text-muted d-block small fw-bold">Personal Involucrado</span>
+                        <div class="d-flex align-items-center mt-1">
+                            <i class="bi bi-person-badge fs-4 text-secondary me-2"></i>
+                            <div>
+                                <span class="d-block fw-bold">{{ expediente.personal.get_full_name }}</span>
+                                <span class="small text-muted">CI: {{ expediente.personal.cedula }}</span>
+                            </div>
+                        </div>
+                    </li>
+                    {% endif %}
+                    {% if expediente.cargo %}
+                    <li class="list-group-item px-0">
+                        <span class="text-muted d-block small fw-bold">Cargo</span>
+                        <span>{{ expediente.cargo.get_categoria_display }} ({{ expediente.cargo.get_tipo_display }})</span>
+                    </li>
+                    {% endif %}
+                    <li class="list-group-item px-0">
+                        <span class="text-muted d-block small fw-bold">Fecha de Registro</span>
+                        <span>{{ expediente.fecha_registro|date:"j" }} de {{ expediente.fecha_registro|date:"F" }} de {{ expediente.fecha_registro|date:"Y"|default:"No especificada" }}</span>
+                    </li>
+                    <li class="list-group-item px-0">
+                        <span class="text-muted d-block small fw-bold">Motivo Central</span>
+                        <span>{{ expediente.motivo.descripcion|default:"No especificado" }}</span>
+                    </li>
+                </ul>
+                <div class="mt-3 d-flex gap-2">
+                    <a href="{% url 'expedientes:expediente_update' expediente.pk %}" class="btn btn-outline-dark btn-sm flex-fill"><i class="bi bi-pencil me-1"></i>Editar</a>
+                    {% if expediente.is_archivado %}
+                    <form method="post" action="{% url 'expedientes:expediente_desarchivar' expediente.pk %}">{% csrf_token %}
+                        <button type="submit" class="btn btn-outline-warning btn-sm flex-fill"><i class="bi bi-archive me-1"></i>Desarchivar</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{% url 'expedientes:expediente_archivar' expediente.pk %}">{% csrf_token %}
+                        <button type="submit" class="btn btn-outline-secondary btn-sm flex-fill"><i class="bi bi-archive me-1"></i>Archivar</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Carta Continua de Actuaciones -->
+    <div class="col-lg-8 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+                <h5 class="fw-bold mb-0">
+                    <i class="bi bi-journal-text me-2"></i>Carta Continua de Actuaciones
+                </h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i> Imprimir
+                    </button>
+                    <a href="{% url 'expedientes:actuacion_create' expediente.pk %}" class="btn btn-sm btn-sgej-primary">
+                        <i class="bi bi-plus-lg me-1"></i> Nueva Actuación
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if actuaciones %}
+                <div class="list-group list-group-flush" id="carta-continua">
+                    {% for actuacion in actuaciones %}
+                    <div class="list-group-item p-4 border-start border-4 border-secondary">
+                        <div class="d-flex w-100 justify-content-between align-items-start">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-dark rounded-pill">{{ forloop.revcounter }}</span>
+                                <h6 class="mb-0 fw-bold text-dark">{{ actuacion.descripcion|truncatechars:100 }}</h6>
+                            </div>
+                            <small class="text-muted text-nowrap ms-2" title="{{ actuacion.created_at|date:'d/m/Y H:i' }}">
+                                <i class="bi bi-clock me-1"></i>{{ actuacion.created_at|date:"d/m/Y" }}
+                            </small>
+                        </div>
+                        <p class="mb-2 text-muted small ps-4">{{ actuacion.descripcion }}</p>
+                        <div class="d-flex align-items-center gap-3 ps-4">
+                            <span class="small text-muted">
+                                <i class="bi bi-person me-1"></i>{{ actuacion.usuario.get_full_name|default:actuacion.usuario.get_short_name }}
+                            </span>
+                            {% if actuacion.documento %}
+                            <a href="{% url 'documentos:documento_detail' actuacion.documento.pk %}" class="small text-decoration-none">
+                                <i class="bi bi-paperclip me-1"></i>Documento adjunto
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if actuaciones.count > 1 %}
+                <div class="card-footer bg-white text-muted small text-center border-top">
+                    <i class="bi bi-file-text me-1"></i> Total: {{ actuaciones.count }} actuacion{{ actuaciones.count|pluralize:'es' }}
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="sgej-empty-state py-5">
+                    <i class="bi bi-clock-history"></i>
+                    <p>Aún no existen actuaciones registradas en este expediente.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

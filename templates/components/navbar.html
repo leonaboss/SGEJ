@@ -1,0 +1,35 @@
+{% load static %}
+<nav class="sgej-navbar shadow-sm">
+    <div class="navbar-logo-area">
+        <img src="{% static 'img/logo-republica.png' %}" alt="Gobierno Bolivariano" class="navbar-logo-img d-none d-md-block" onerror="this.style.display='none'">
+        <img src="{% static 'img/logo-uptag.png' %}" alt="UPTAG" class="navbar-logo-img ms-2">
+    </div>
+    
+    <div class="navbar-center d-none d-lg-block text-white" style="font-weight: 500; letter-spacing: 0.05em; font-size: 0.9rem;">
+        SISTEMA DE GESTOR DE EXPEDIENTES JURÍDICOS (SGEJ)
+    </div>
+    
+    <div class="navbar-right">
+        <a href="{% url 'expedientes:notificacion_list' %}" class="navbar-notification-btn" title="Notificaciones" aria-label="Notificaciones">
+            <i class="bi bi-bell-fill"></i>
+            {% if notificaciones_count and notificaciones_count > 0 %}
+            <span class="navbar-notification-badge">{{ notificaciones_count }}</span>
+            {% endif %}
+        </a>
+        
+        <div class="dropdown ms-3">
+            <button class="btn dropdown-toggle d-flex align-items-center p-0 border-0 bg-transparent text-white" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                {% include 'components/user_avatar.html' with user=request.user size=32 class='me-2 text-white-50' %}
+                <div class="d-flex flex-column text-end lh-1">
+                    <span class="navbar-user-name">{{ request.user.get_short_name|default:"Usuario" }}</span>
+                    <span class="navbar-user-role">{{ request.user.get_rol_display_label }}</span>
+                </div>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow-sm">
+                <li><a class="dropdown-item" href="{% url 'usuarios:profile' %}"><i class="bi bi-person-circle me-2"></i>Mi Perfil</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="{% url 'usuarios:logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>

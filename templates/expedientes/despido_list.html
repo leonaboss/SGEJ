@@ -1,0 +1,19 @@
+{% extends 'base_module_list.html' %}
+{% block title %}Despidos | SGEJ{% endblock %}
+{% block module_title %}Casos de Despido Recientes{% endblock %}
+{% block search_placeholder %}Buscar por CI, Nombre o N° Exp...{% endblock %}
+{% block table_headers %}
+<th>N° Expediente</th>
+<th>Nombre y Apellido</th>
+<th>Cédula</th>
+<th>Motivo</th>
+<th>Estatus</th>
+{% endblock %}
+{% block table_cells %}
+<td><span class="fw-semibold">{{ exp.numero_expediente }}</span></td>
+<td>{{ exp.personal.get_full_name|default:"-" }}</td>
+<td>{{ exp.personal.cedula|default:"-" }}</td>
+<td>{{ exp.motivo.descripcion|default:"-"|truncatechars:50 }}</td>
+<td>{% include 'components/estatus_badge.html' with estatus=exp.estatus %}</td>
+{% endblock %}
+{% block empty_message %}No se encontraron expedientes de despido.{% endblock %}

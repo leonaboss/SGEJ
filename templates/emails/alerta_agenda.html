@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+        <div style="background: #1e293b; color: white; padding: 20px; text-align: center;">
+            <h2 style="margin: 0;">SGEJ - Alerta Procesal</h2>
+        </div>
+        <div style="padding: 20px;">
+            <p>Estimado(a) <strong>{{ evento.usuario.get_full_name }}</strong>,</p>
+            <p>Se aproxima un evento registrado en su agenda procesal:</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Evento</td><td style="padding: 8px; border: 1px solid #ddd;">{{ evento.titulo }}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Tipo</td><td style="padding: 8px; border: 1px solid #ddd;">{{ evento.get_tipo_evento_display }}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Fecha</td><td style="padding: 8px; border: 1px solid #ddd;">{{ evento.fecha_hora|date:"d/m/Y H:i" }}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Lugar</td><td style="padding: 8px; border: 1px solid #ddd;">{{ evento.lugar|default:"-" }}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Expediente</td><td style="padding: 8px; border: 1px solid #ddd;">{{ evento.expediente.numero_expediente }}</td></tr>
+                <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Días restantes</td><td style="padding: 8px; border: 1px solid #ddd;">{{ dias_restantes }} día(s)</td></tr>
+            </table>
+            {% if evento.descripcion %}
+            <p><strong>Descripción:</strong></p>
+            <p>{{ evento.descripcion }}</p>
+            {% endif %}
+            <p style="color: #666; font-size: 12px; margin-top: 20px;">Este es un mensaje automático del Sistema de Gestión Jurídica (SGEJ).</p>
+        </div>
+    </div>
+</body>
+</html>

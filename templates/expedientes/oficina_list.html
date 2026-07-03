@@ -1,0 +1,21 @@
+{% extends 'base_module_list.html' %}
+{% block title %}Oficina Jurídica | SGEJ{% endblock %}
+{% block module_title %}Expedientes en Oficina Jurídica{% endblock %}
+{% block search_placeholder %}Buscar...{% endblock %}
+{% block table_headers %}
+<th>N° Expediente</th>
+<th>N° Exp. Relativo</th>
+<th>Nombre y Apellido</th>
+<th>Cédula</th>
+<th>Cargo</th>
+<th>Estatus</th>
+{% endblock %}
+{% block table_cells %}
+<td><span class="fw-semibold">{{ exp.numero_expediente }}</span></td>
+<td>{{ exp.numero_expediente_relativo|default:"-" }}</td>
+<td>{{ exp.personal.get_full_name|default:"-" }}</td>
+<td>{{ exp.personal.cedula|default:"-" }}</td>
+<td>{{ exp.cargo.get_categoria_display|default:"-" }} ({{ exp.cargo.get_tipo_display|default:"-" }})</td>
+<td>{% include 'components/estatus_badge.html' with estatus=exp.estatus %}</td>
+{% endblock %}
+{% block empty_message %}No se encontraron expedientes en oficina.{% endblock %}

@@ -1,0 +1,946 @@
+/*
+ * ============================================
+ * SGEJ — Design System (Tokens + Layout + Components)
+ * Identidad visual: SIACE-UPTAG (diurno, formal, acento naranja)
+ * ============================================
+ */
+
+/* ---- Import Google Fonts ---- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ============================================
+ * 1. DESIGN TOKENS (Variables Semánticas)
+ * ============================================ */
+:root {
+  /* Colores — Sidebar */
+  --color-sidebar-bg: #2d2520;
+  --color-sidebar-bg-hover: #3d3530;
+  --color-sidebar-text: #c8bfb5;
+  --color-sidebar-text-active: #ffffff;
+  --color-sidebar-border: rgba(255,255,255,0.08);
+  --color-sidebar-profile-bg: rgba(0,0,0,0.2);
+
+  /* Colores — Acento institucional */
+  --color-accent-orange: #e87a1e;
+  --color-accent-orange-hover: #d06a12;
+  --color-accent-red: #dc2626;
+  --color-accent-red-line: #c41e1e;
+
+  /* Colores — Navbar */
+  --color-navbar-bg: #1a1a2e;
+  --color-navbar-text: #e0e0e0;
+
+  /* Colores — Área de trabajo */
+  --color-body-bg: #f4f6f9;
+  --color-card-bg: #ffffff;
+  --color-text-primary: #212529;
+  --color-text-secondary: #6c757d;
+  --color-text-muted: #9ca3af;
+  --color-border-light: #e5e7eb;
+
+  /* Colores — Estatus Kanban */
+  --color-status-recibido: #6b7280;
+  --color-status-analisis: #3b82f6;
+  --color-status-firma: #f59e0b;
+  --color-status-despachado: #10b981;
+  --color-status-archivado: #8b5cf6;
+
+  /* Tipografía */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Layout */
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 44px;
+  --navbar-height: 60px;
+  --border-radius-sm: 0.375rem;
+  --border-radius-md: 0.5rem;
+  --border-radius-lg: 0.75rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.05);
+  --shadow-card-hover: 0 8px 25px rgba(0,0,0,0.1);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 350ms ease;
+}
+
+/* ============================================
+ * 2. RESET & BASE
+ * ============================================ */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-primary);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-body-bg);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================
+ * 3. LAYOUT — Dashboard Grid
+ * ============================================ */
+.sgej-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sgej-sidebar {
+  width: var(--sidebar-collapsed);
+  height: 100vh;
+  background: var(--color-sidebar-bg);
+  background-image: linear-gradient(180deg, rgba(45,37,32,1) 0%, rgba(35,28,24,1) 100%);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1040;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width var(--transition-base);
+}
+
+.sgej-sidebar.show {
+  width: var(--sidebar-width);
+}
+
+.sgej-main-wrapper {
+  margin-left: var(--sidebar-collapsed);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left var(--transition-base);
+}
+
+@media (min-width: 992px) {
+  .sgej-sidebar.show ~ .sgej-main-wrapper {
+    margin-left: var(--sidebar-width);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .sgej-sidebar.show ~ .sgej-main-wrapper {
+    margin-left: var(--sidebar-width);
+  }
+}
+
+.sgej-navbar {
+  height: var(--navbar-height);
+  background: var(--color-navbar-bg);
+  border-bottom: 4px solid var(--color-accent-red);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-lg);
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  box-shadow: var(--shadow-md);
+}
+
+.sgej-content {
+  flex: 1;
+  padding: var(--spacing-lg);
+}
+
+/* ============================================
+ * 4. SIDEBAR — Profile Block
+ * ============================================ */
+.sidebar-profile {
+  padding: var(--spacing-lg);
+  text-align: center;
+  background: var(--color-sidebar-profile-bg);
+  border-bottom: 1px solid var(--color-sidebar-border);
+  margin-bottom: var(--spacing-sm);
+}
+
+.sidebar-profile-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: var(--spacing-sm);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.sidebar-profile-name {
+  font-weight: 700;
+  color: var(--color-sidebar-text-active);
+  font-size: var(--font-size-base);
+  margin-bottom: var(--spacing-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-profile-role {
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-orange);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+/* ============================================
+ * 4b. SIDEBAR — Hamburger Button
+ * ============================================ */
+.sidebar-hamburger-btn {
+  display: flex;
+  background: none;
+  border: 1px solid var(--color-sidebar-border);
+  border-radius: var(--border-radius-sm);
+  color: var(--color-sidebar-text);
+  font-size: 1.2rem;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+.sidebar-hamburger-btn:hover {
+  background: var(--color-accent-orange);
+  border-color: var(--color-accent-orange);
+  color: white;
+}
+
+/* Estado colapsado del sidebar (aplica en todos los tamaños) */
+.sgej-sidebar:not(.show) {
+  overflow: visible;
+}
+.sgej-sidebar:not(.show) .sidebar-profile {
+  padding: 6px;
+  border-bottom: none;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sgej-sidebar:not(.show) .sidebar-profile-photo,
+.sgej-sidebar:not(.show) .sidebar-profile-name,
+.sgej-sidebar:not(.show) .sidebar-profile-role > span,
+.sgej-sidebar:not(.show) .sidebar-nav,
+.sgej-sidebar:not(.show) .p-3.mt-auto {
+  display: none;
+}
+.sgej-sidebar:not(.show) .sidebar-profile-role {
+  display: flex;
+  justify-content: center;
+  border: none;
+  padding: 0;
+  gap: 0;
+}
+.sgej-sidebar:not(.show) .sidebar-hamburger-btn {
+  display: flex;
+}
+
+/* ============================================
+ * 5. SIDEBAR — Navigation Items
+ * ============================================ */
+.sidebar-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-sidebar-bg-hover) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 10px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: var(--color-sidebar-bg-hover);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-orange);
+}
+
+.sidebar-nav-item {
+  margin: 1px 0;
+}
+
+.sidebar-nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  color: var(--color-sidebar-text);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border-left: 3px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-nav-link:hover {
+  background: var(--color-sidebar-bg-hover);
+  color: var(--color-sidebar-text-active);
+  border-left-color: var(--color-accent-orange);
+}
+
+.sidebar-nav-link.active {
+  background: var(--color-accent-orange);
+  color: var(--color-sidebar-text-active);
+  border-left-color: var(--color-accent-orange);
+  font-weight: 600;
+}
+
+.sidebar-nav-link i {
+  font-size: 1.1rem;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar-section-label {
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-xs);
+  color: var(--color-sidebar-text);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+.sidebar-divider {
+  border: none;
+  border-top: 1px solid var(--color-sidebar-border);
+  margin: var(--spacing-sm) var(--spacing-lg);
+}
+
+/* ============================================
+ * 6. NAVBAR — Components
+ * ============================================ */
+.navbar-logo-area {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.navbar-logo-img {
+  height: 36px;
+  width: auto;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.navbar-notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  color: var(--color-navbar-text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  transition: color var(--transition-fast);
+}
+
+.navbar-notification-btn:hover {
+  color: var(--color-accent-orange);
+}
+
+.navbar-notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--color-accent-red);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navbar-user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-navbar-text);
+  font-size: var(--font-size-sm);
+}
+
+.navbar-user-name {
+  font-weight: 600;
+}
+
+.navbar-user-role {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.navbar-toggle-btn {
+  display: block;
+  background: none;
+  border: none;
+  color: var(--color-navbar-text);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+}
+
+/* ============================================
+ * 7. CARDS — Dashboard Counters
+ * ============================================ */
+.sgej-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.sgej-count-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.sgej-count-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-accent-orange);
+  color: inherit;
+  text-decoration: none;
+}
+
+.sgej-count-card-info h6 {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--spacing-xs);
+}
+
+.sgej-count-card-number {
+  font-size: var(--font-size-3xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.sgej-count-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--border-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Card Icon Colors */
+.sgej-count-card-icon.bg-desp { background: linear-gradient(135deg, #6b7280, #4b5563); }
+.sgej-count-card-icon.bg-insp { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.sgej-count-card-icon.bg-ofic { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+.sgej-count-card-icon.bg-cont { background: linear-gradient(135deg, #10b981, #059669); }
+.sgej-count-card-icon.bg-liti { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.sgej-count-card-icon.bg-sust { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.sgej-count-card-icon.bg-ind  { background: linear-gradient(135deg, #374151, #1f2937); }
+.sgej-count-card-icon.bg-act  { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+
+/* ============================================
+ * 8. TABLES — Module Data Tables
+ * ============================================ */
+.sgej-table-container {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.sgej-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.sgej-table-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.sgej-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.sgej-table thead th {
+  background: var(--color-body-bg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-border-light);
+  white-space: nowrap;
+}
+
+.sgej-table tbody td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.sgej-table tbody tr:hover {
+  background: rgba(232, 122, 30, 0.04);
+}
+
+.sgej-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ============================================
+ * 9. STATUS BADGES — Kanban Colors
+ * ============================================ */
+.sgej-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2em 0.65em;
+  border-radius: 50px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.sgej-badge-recibido {
+  background: rgba(107,114,128,0.12);
+  color: var(--color-status-recibido);
+}
+.sgej-badge-analisis {
+  background: rgba(59,130,246,0.12);
+  color: var(--color-status-analisis);
+}
+.sgej-badge-firma {
+  background: rgba(245,158,11,0.12);
+  color: var(--color-status-firma);
+}
+.sgej-badge-despachado {
+  background: rgba(16,185,129,0.12);
+  color: var(--color-status-despachado);
+}
+.sgej-badge-archivado {
+  background: rgba(139,92,246,0.12);
+  color: var(--color-status-archivado);
+}
+
+/* ============================================
+ * 10. BUTTONS — Action Buttons
+ * ============================================ */
+.btn-sgej-primary {
+  background: var(--color-accent-orange);
+  border-color: var(--color-accent-orange);
+  color: white;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.btn-sgej-primary:hover {
+  background: var(--color-accent-orange-hover);
+  border-color: var(--color-accent-orange-hover);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(232,122,30,0.3);
+}
+
+.btn-action {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border-light);
+  background: white;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-action:hover { border-color: var(--color-accent-orange); color: var(--color-accent-orange); }
+.btn-action-danger:hover { border-color: var(--color-accent-red); color: var(--color-accent-red); }
+
+/* ============================================
+ * 11. SEARCH & FILTERS
+ * ============================================ */
+.sgej-search-bar {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.sgej-search-input {
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-primary);
+  transition: border-color var(--transition-fast);
+  min-width: 220px;
+}
+
+.sgej-search-input:focus {
+  outline: none;
+  border-color: var(--color-accent-orange);
+  box-shadow: 0 0 0 3px rgba(232,122,30,0.1);
+}
+
+/* ============================================
+ * 12. MODAL — Security Confirmation
+ * ============================================ */
+.modal-sgej .modal-header {
+  background: var(--color-navbar-bg);
+  color: white;
+  border-bottom: 3px solid var(--color-accent-red);
+}
+
+.modal-sgej .modal-header .btn-close {
+  filter: brightness(0) invert(1);
+}
+
+.modal-sgej .modal-footer {
+  background: var(--color-body-bg);
+}
+
+/* ============================================
+ * 13. EMPTY STATE
+ * ============================================ */
+.sgej-empty-state {
+  text-align: center;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  color: var(--color-text-muted);
+}
+
+.sgej-empty-state i {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.4;
+}
+
+.sgej-empty-state p {
+  font-size: var(--font-size-base);
+  margin: 0;
+}
+
+/* ============================================
+ * 14. ALERTS — Vencimiento
+ * ============================================ */
+.sgej-alert-vencimiento {
+  border-left: 4px solid var(--color-accent-orange);
+  background: rgba(232,122,30,0.06);
+  border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+/* ============================================
+ * 15. ANIMATIONS
+ * ============================================ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp var(--transition-slow) ease forwards;
+}
+
+.animate-count {
+  animation: countUp 0.4s ease-out;
+}
+
+.sgej-count-card { animation: fadeInUp 0.4s ease forwards; }
+.sgej-count-card:nth-child(2) { animation-delay: 0.05s; }
+.sgej-count-card:nth-child(3) { animation-delay: 0.1s; }
+.sgej-count-card:nth-child(4) { animation-delay: 0.15s; }
+.sgej-count-card:nth-child(5) { animation-delay: 0.2s; }
+.sgej-count-card:nth-child(6) { animation-delay: 0.25s; }
+.sgej-count-card:nth-child(7) { animation-delay: 0.3s; }
+
+/* ============================================
+ * 16. LOGIN PAGE
+ * ============================================ */
+.sgej-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-navbar-bg) 0%, #16213e 50%, var(--color-sidebar-bg) 100%);
+  padding: var(--spacing-lg);
+}
+
+.sgej-login-card {
+  background: var(--color-card-bg);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+}
+
+.sgej-login-header {
+  background: var(--color-navbar-bg);
+  border-bottom: 4px solid var(--color-accent-red);
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.sgej-login-header img {
+  height: 64px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.sgej-login-header h1 {
+  color: white;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin: 0;
+}
+
+.sgej-login-header p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin: var(--spacing-xs) 0 0;
+}
+
+.sgej-login-body {
+  padding: var(--spacing-xl);
+}
+
+/* ============================================
+ * 17. BREADCRUMBS
+ * ============================================ */
+.sgej-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-lg);
+}
+
+.sgej-breadcrumb a {
+  color: var(--color-accent-orange);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.sgej-breadcrumb a:hover { text-decoration: underline; }
+
+.sgej-breadcrumb-separator {
+  color: var(--color-text-muted);
+}
+
+/* ============================================
+ * 18. RESPONSIVE — Mobile
+ * ============================================ */
+@media (max-width: 991.98px) {
+  .sgej-cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: var(--spacing-md);
+  }
+
+  .sgej-table-container {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .sgej-cards-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sgej-count-card {
+    padding: var(--spacing-md);
+  }
+
+  .sgej-count-card-number {
+    font-size: var(--font-size-xl);
+  }
+
+  .sgej-content {
+    padding: var(--spacing-md);
+  }
+}
+
+/* ============================================
+ * 19. SIDEBAR OVERLAY (Mobile)
+ * ============================================ */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1035;
+}
+
+@media (max-width: 991.98px) {
+  .sidebar-overlay {
+    display: block;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-base);
+  }
+
+  .sidebar-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ============================================
+ * 20. PAGINATION
+ * ============================================ */
+.sgej-pagination .page-link {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-light);
+  font-size: var(--font-size-sm);
+}
+
+.sgej-pagination .page-item.active .page-link {
+  background-color: var(--color-accent-orange);
+  border-color: var(--color-accent-orange);
+  color: white;
+}
+
+.sgej-pagination .page-link:hover {
+  color: var(--color-accent-orange);
+  border-color: var(--color-accent-orange);
+  background: rgba(232,122,30,0.05);
+}
+
+/* ============================================
+ * 21. CARTA CONTINUA — PRINT STYLES
+ * ============================================ */
+@media print {
+  body {
+    background: white !important;
+    font-size: 11pt;
+    color: #000;
+  }
+  .sgej-sidebar,
+  .sgej-navbar,
+  .sgej-breadcrumb,
+  .btn,
+  .sgej-footer,
+  .modal,
+  .sidebar-overlay {
+    display: none !important;
+  }
+  .sgej-main-wrapper,
+  .sgej-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .card-header {
+    background: white !important;
+    border-bottom: 2px solid #000 !important;
+  }
+  .list-group-item {
+    border: none !important;
+    border-bottom: 1px solid #ddd !important;
+    padding: 12px 0 !important;
+    page-break-inside: avoid;
+  }
+  .badge.bg-dark {
+    background: #333 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .text-muted {
+    color: #555 !important;
+  }
+  .border-start {
+    border-left-color: #999 !important;
+  }
+  #carta-continua {
+    border: none !important;
+  }
+}

@@ -1,0 +1,17 @@
+{% extends 'base_module_list.html' %}
+{% block title %}Índices Inspectoría | SGEJ{% endblock %}
+{% block module_title %}Registro de Índices{% endblock %}
+{% block search_placeholder %}Buscar...{% endblock %}
+{% block table_headers %}
+<th>Nombres y Apellidos</th>
+<th>Cédula</th>
+<th>Expediente Relacionado</th>
+<th>Motivo</th>
+{% endblock %}
+{% block table_cells %}
+<td><span class="fw-semibold">{{ exp.personal.get_full_name|default:"-" }}</span></td>
+<td>{{ exp.personal.cedula|default:"-" }}</td>
+<td>{{ exp.numero_expediente }}</td>
+<td>{{ exp.motivo.descripcion|default:"-"|truncatechars:50 }}</td>
+{% endblock %}
+{% block empty_message %}No se encontraron índices registrados.{% endblock %}
