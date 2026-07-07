@@ -217,55 +217,32 @@ class SessionControlMiddleware:
 # ---------------------------------------------------------------------------
 # Auditoría Inmutable Middleware
 # ---------------------------------------------------------------------------
-class AuditoriaInmutableMiddleware:
-    """
-    Middleware de auditoría inmutable con hash SHA-256 encadenados.
-    Registra TODA acción del usuario en el sistema, detecta actividad
-    inusual, y marca alertas de seguridad como IP diferente, horario
-    extraño, eliminaciones masivas, etc.
-    """
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        request._audit_tracked = False
-        request._audit_skip = getattr(request, '_audit_skip', False)
-        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
-            request._audit_tracked = True
-        response = self.get_response(request)
-        if request._audit_tracked and not request._audit_skip and response.status_code in (200, 201, 302):
-            self._registrar_bitacora(request, response)
-        return response
-
-    def _registrar_bitacora(self, request, response):
+class AuditoriaService:
+    @staticmethod
+    def registrar_evento(request, response):
+        """Service layer to handle logging logic, decouples from Middleware."""
         from apps.usuarios.models import BitacoraAuditoria
-
+        
         try:
             usuario = request.user if request.user.is_authenticated else None
             ip = _extraer_ip(request)
             accion = _determinar_accion(request)
             modulo = _determinar_modulo(request)
             descripcion = _generar_descripcion(request, accion)
-
-            # Detectar anomalías
             alertas = _detectar_anomalias(request, usuario, ip, accion)
             tipo = ','.join(alertas) if alertas else ''
 
+            # NOTA DE ESCALABILIDAD: Para mejorar el rendimiento con 100+ usuarios,
+            # este bloque debería ejecutarse asíncronamente (ej. usando Celery + Redis).
+            # Por ahora, se mantiene síncrono pero desacoplado de la lógica del middleware.
             with transaction.atomic():
                 ultimo_log = (
                     BitacoraAuditoria.objects.select_for_update()
                     .order_by('-id').first()
                 )
                 prev_hash = ultimo_log.hash_integridad if ultimo_log else "GENESIS_HASH"
-
-                raw_string = (
-                    f"{prev_hash}|{usuario.id if usuario else 'ANON'}|"
-                    f"{accion}|{modulo}|{ip}|{descripcion}"
-                )
-                hash_integridad = hashlib.sha256(
-                    raw_string.encode('utf-8')
-                ).hexdigest()
+                raw_string = f"{prev_hash}|{usuario.id if usuario else 'ANON'}|{accion}|{modulo}|{ip}|{descripcion}"
+                hash_integridad = hashlib.sha256(raw_string.encode('utf-8')).hexdigest()
 
                 BitacoraAuditoria.objects.create(
                     usuario=usuario,
@@ -277,7 +254,26 @@ class AuditoriaInmutableMiddleware:
                     ip_address=ip,
                     hash_integridad=hash_integridad,
                 )
-
-
         except Exception as e:
             logger.error(f"Error en bitácora de auditoría: {e}")
+
+class AuditoriaInmutableMiddleware:
+    """
+    Middleware de auditoría inmutable con hash SHA-256 encadenados.
+    Delegates logging to AuditoriaService.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        request._audit_tracked = False
+        request._audit_skip = getattr(request, '_audit_skip', False)
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+            request._audit_tracked = True
+        
+        response = self.get_response(request)
+        
+        if request._audit_tracked and not request._audit_skip and response.status_code in (200, 201, 302):
+            # Delegación de responsabilidad
+            AuditoriaService.registrar_evento(request, response)
+        return response

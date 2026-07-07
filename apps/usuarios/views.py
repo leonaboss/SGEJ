@@ -1,15 +1,19 @@
 import io
 import base64
 import qrcode
+from datetime import timedelta
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.views.generic import ListView
+from django import forms
 from django.contrib import messages
+from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
-from .models import Usuario, HistorialContrasena, BitacoraAuditoria
-from .forms import UsuarioCreationForm, UsuarioChangeForm, PasswordChangeForm, RegistroUsuarioForm
+from .models import Usuario, HistorialContrasena, BitacoraAuditoria, SecurityQuestion
+from .forms import UsuarioCreationForm, UsuarioChangeForm, PasswordChangeForm, RegistroUsuarioForm, validate_password_strength
 
 class RoleRequiredMixin(LoginRequiredMixin):
     roles_permitidos = []
@@ -26,20 +30,38 @@ class RoleRequiredMixin(LoginRequiredMixin):
 class LoginView(View):
     template_name = 'auth/login.html'
     def get(self, request):
+        from django.conf import settings
         if request.user.is_authenticated:
             return redirect('expedientes:dashboard')
-        return render(request, self.template_name)
+        return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
     def post(self, request):
+        from django.conf import settings
+        import requests
+        
         username = request.POST.get('usuario', '').strip()
         password = request.POST.get('password', '').strip()
+        
+        # Validar reCAPTCHA
+        recaptcha_response = request.POST.get('g-recaptcha-response')
+        data = {
+            'secret': settings.RECAPTCHA_SECRET_KEY,
+            'response': recaptcha_response
+        }
+        r = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
+        result = r.json()
+
+        if not result.get('success'):
+            messages.error(request, 'Validación de reCAPTCHA fallida. Intente de nuevo.')
+            return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
+
         if not username or not password:
             messages.error(request, 'Todos los campos son obligatorios.')
-            return render(request, self.template_name)
+            return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
         user = authenticate(request, username=username, password=password)
         if user is not None:
             if user.is_bloqueado:
                 messages.error(request, 'Su cuenta ha sido bloqueada por múltiples intentos fallidos. Contacte al Administrador General.')
-                return render(request, self.template_name)
+                return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
             user.intentos_fallidos = 0
             user.save(update_fields=['intentos_fallidos'])
             if user.is_2fa_enabled:
@@ -60,7 +82,7 @@ class LoginView(View):
                 target_user.save(update_fields=['intentos_fallidos', 'is_bloqueado'])
             except Usuario.DoesNotExist:
                 messages.error(request, 'Credenciales inválidas.')
-            return render(request, self.template_name)
+            return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
 
 class LogoutView(LoginRequiredMixin, View):
     def get(self, request):
@@ -169,6 +191,47 @@ class Disable2FAView(LoginRequiredMixin, View):
         return redirect('usuarios:profile')
 
 
+class ConfirmDelete2FAView(LoginRequiredMixin, View):
+    template_name = 'auth/totp_verify.html'
+    def get(self, request):
+        if 'delete_user_id' not in request.session:
+            return redirect('usuarios:usuario_list')
+        return render(request, self.template_name, {'action_label': 'Confirmar eliminación de usuario'})
+    
+    def post(self, request):
+        pk = request.session.get('delete_user_id')
+        if not pk:
+            return redirect('usuarios:usuario_list')
+            
+        # Priorizar 2FA si está habilitado
+        if request.user.is_2fa_enabled:
+            token = request.POST.get('token', '').strip()
+            if not token:
+                messages.error(request, 'Ingrese el código de verificación.')
+                return render(request, self.template_name, {'action_label': 'Confirmar eliminación de usuario'})
+            device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+            if not device or not device.verify_token(token):
+                messages.error(request, 'Código de verificación inválido.')
+                return render(request, self.template_name, {'action_label': 'Confirmar eliminación de usuario'})
+        else:
+            # Flujo local: Frase de Seguridad
+            frase = request.POST.get('frase_seguridad', '').strip()
+            if not frase or not request.user.check_frase_seguridad(frase):
+                messages.error(request, 'Frase de seguridad incorrecta.')
+                return render(request, self.template_name, {'action_label': 'Confirmar eliminación de usuario'})
+
+        del request.session['delete_user_id']
+        usuario = get_object_or_404(Usuario, pk=pk, deleted_at__isnull=True)
+        if usuario == request.user:
+            messages.error(request, 'No puedes eliminarte a ti mismo.')
+        else:
+            usuario.deleted_at = timezone.now()
+            usuario.is_active = False
+            usuario.save(update_fields=['deleted_at', 'is_active'])
+            messages.success(request, f'Usuario {usuario.usuario} eliminado lógicamente.')
+        return redirect('usuarios:usuario_list')
+
+
 class ConfirmBlock2FAView(LoginRequiredMixin, View):
     template_name = 'auth/totp_verify.html'
     def get(self, request):
@@ -228,58 +291,214 @@ class RecoveryResetView(View):
 
 class RecoveryView(View):
     template_name = 'auth/recovery.html'
+
     def get(self, request):
         from django.conf import settings
-        context = {'entorno': getattr(settings, 'ENTORNO', 'localhost')}
-        return render(request, self.template_name, context)
+        entorno = getattr(settings, 'ENTORNO', 'localhost')
+        
+        # Lógica mejorada: En desarrollo local siempre permitimos frase, 
+        # independientemente de si hay email configurado.
+        is_production = entorno == 'produccion'
+        email_configured = bool(getattr(settings, 'EMAIL_HOST_USER', '').strip() and getattr(settings, 'EMAIL_HOST', '').strip())
+        
+        # Forzar frase de seguridad si estamos en local, aunque haya mail configurado
+        use_email = is_production and email_configured
+        
+        if use_email:
+            if request.session.get('recovery_pending_verified'):
+                stage = 'password'
+            elif request.session.get('recovery_pending_user_id'):
+                stage = 'code'
+            else:
+                stage = 'email'
+        else:
+            stage = 'password' if request.session.get('recovery_pending_user_id') else 'phrase'
+        return render(request, self.template_name, {'entorno': entorno, 'stage': stage})
+
     def post(self, request):
         from django.conf import settings
         from django.utils.crypto import get_random_string
         from django.core.mail import send_mail
-        from django.contrib.auth.hashers import make_password
         entorno = getattr(settings, 'ENTORNO', 'localhost')
+        
+        is_production = entorno == 'produccion'
+        email_configured = bool(getattr(settings, 'EMAIL_HOST_USER', '').strip() and getattr(settings, 'EMAIL_HOST', '').strip())
+        use_email = is_production and email_configured
+        
+        stage = request.POST.get('stage', 'email' if use_email else 'phrase')
         usuario_input = request.POST.get('usuario', '').strip()
         if not usuario_input:
             messages.error(request, 'Debe ingresar su nombre de usuario.')
-            return render(request, self.template_name, {'entorno': entorno})
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'email' if use_email else 'phrase'})
         try:
             user = Usuario.objects.get(usuario=usuario_input, deleted_at__isnull=True)
         except Usuario.DoesNotExist:
             messages.error(request, 'Usuario no encontrado.')
-            return render(request, self.template_name, {'entorno': entorno})
-        if entorno == 'produccion':
-            token = get_random_string(64)
-            request.session['recovery_token'] = token
-            request.session['recovery_user_id'] = user.id
-            enlace = request.build_absolute_uri(f"/auth/recovery/reset?token={token}&uid={user.id}")
-            send_mail(
-                'Recuperación de Contraseña - SGEJ',
-                f'Use el siguiente enlace para restablecer su contraseña: {enlace}',
-                settings.DEFAULT_FROM_EMAIL,
-                [user.correo] if user.correo else [],
-                fail_silently=True,
-            )
-            messages.success(request, 'Revise su correo institucional para el enlace de recuperación.')
-        else:
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'email' if use_email else 'phrase'})
+        
+        # Validación de seguridad adicional para staff
+        if user.is_staff and not request.session.get('recovery_staff_verified'):
+            if stage != 'security_question':
+                try:
+                    pregunta = user.security_question.pregunta
+                except SecurityQuestion.DoesNotExist:
+                    messages.error(request, 'No tiene configurada una pregunta de seguridad. Contacte al Administrador.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email' if use_email else 'phrase'})
+                
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'security_question', 'usuario': usuario_input, 'pregunta': pregunta})
+            
+            respuesta = request.POST.get('respuesta_seguridad', '').strip()
+            if not user.security_question.check_respuesta(respuesta):
+                messages.error(request, 'Respuesta incorrecta.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'security_question', 'usuario': usuario_input, 'pregunta': user.security_question.pregunta})
+            
+            request.session['recovery_staff_verified'] = True
+            messages.success(request, 'Verificación de seguridad exitosa.')
+            # Redirigir al mismo stage para que continúe
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'email' if use_email else 'phrase', 'usuario': usuario_input})
+
+        if use_email:
+            if stage == 'email':
+                if not user.correo:
+                    messages.error(request, 'Este usuario no tiene un correo registrado para recuperar la contraseña.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                codigo = get_random_string(6, allowed_chars='0123456789')
+                request.session['recovery_pending_user_id'] = user.id
+                request.session['recovery_pending_code_hash'] = make_password(codigo)
+                request.session['recovery_pending_code_expires_at'] = (timezone.now() + timedelta(minutes=10)).isoformat()
+                request.session['recovery_pending_verified'] = False
+                remitente = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER or 'no-reply@uptag.edu.ve'
+                try:
+                    send_mail(
+                        'Recuperación de Contraseña - SGEJ',
+                        f'Su código de verificación para recuperar la contraseña es: {codigo}\n\nEste código vence en 10 minutos.',
+                        remitente,
+                        [user.correo],
+                        fail_silently=False,
+                    )
+                except Exception as exc:
+                    messages.error(request, f'No fue posible enviar el correo de recuperación: {exc}')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                messages.success(request, 'Se envió un código de verificación a su correo. Revise su bandeja de entrada.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input})
+            if stage == 'code':
+                codigo_ingresado = request.POST.get('recovery_code', '').strip()
+                if not codigo_ingresado:
+                    messages.error(request, 'Debe ingresar el código de verificación enviado por correo.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input})
+                code_hash = request.session.get('recovery_pending_code_hash')
+                expires_at = request.session.get('recovery_pending_code_expires_at')
+                if not code_hash or not expires_at:
+                    messages.error(request, 'El código de verificación ha expirado o no existe. Solicite uno nuevo.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                if timezone.now() > timezone.datetime.fromisoformat(expires_at):
+                    request.session.pop('recovery_pending_code_hash', None)
+                    request.session.pop('recovery_pending_code_expires_at', None)
+                    messages.error(request, 'El código de verificación ha expirado. Solicite uno nuevo.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                if not check_password(codigo_ingresado, code_hash):
+                    messages.error(request, 'Código de verificación incorrecto.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input})
+                request.session['recovery_pending_verified'] = True
+                messages.success(request, 'Código verificado. Ahora ingrese su nueva contraseña.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+            if stage == 'password':
+                pending_id = request.session.get('recovery_pending_user_id')
+                if not pending_id or not request.session.get('recovery_pending_verified'):
+                    messages.error(request, 'Debe completar primero el paso de verificación por correo.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                try:
+                    pending_user = Usuario.objects.get(id=pending_id, deleted_at__isnull=True)
+                except Usuario.DoesNotExist:
+                    request.session.pop('recovery_pending_user_id', None)
+                    request.session.pop('recovery_pending_code_hash', None)
+                    request.session.pop('recovery_pending_code_expires_at', None)
+                    request.session.pop('recovery_pending_verified', None)
+                    messages.error(request, 'Usuario de recuperación no encontrado. Inicie de nuevo el proceso.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                new_password = request.POST.get('new_password', '').strip()
+                new_password_repeat = request.POST.get('new_password_repeat', '').strip()
+                if not new_password:
+                    messages.error(request, 'Debe ingresar la nueva contraseña.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+                if new_password != new_password_repeat:
+                    messages.error(request, 'Las contraseñas no coinciden.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+                try:
+                    validate_password_strength(new_password)
+                except forms.ValidationError as e:
+                    messages.error(request, e.message)
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+                pending_user.set_password(new_password)
+                pending_user.save()
+                HistorialContrasena.objects.create(usuario=pending_user, password_hash=pending_user.password)
+                request.session.pop('recovery_pending_user_id', None)
+                request.session.pop('recovery_pending_code_hash', None)
+                request.session.pop('recovery_pending_code_expires_at', None)
+                request.session.pop('recovery_pending_verified', None)
+                messages.success(request, 'Contraseña actualizada correctamente. Ahora puede iniciar sesión con su nueva contraseña.')
+                return redirect('usuarios:login')
+        if stage == 'phrase':
             frase = request.POST.get('frase_seguridad', '').strip()
             cedula = request.POST.get('cedula', '').strip()
-            frase_maestra = getattr(settings, 'FRASE_SEGURIDAD_MAESTRA', '')
-            if not frase or not cedula:
-                messages.error(request, 'Debe ingresar la Frase de Seguridad Maestra y su Cédula.')
-                return render(request, self.template_name, {'entorno': entorno})
-            if frase == frase_maestra and cedula == user.cedula:
-                from .services import UsuarioService
-                nueva_pass = UsuarioService.generar_password_temporal()
-                user.set_password(nueva_pass)
-                user.save(update_fields=['password'])
-                HistorialContrasena.objects.create(
-                    usuario=user,
-                    password_hash=user.password
-                )
-                messages.success(request, f'Contraseña restablecida. Su nueva contraseña temporal es: {nueva_pass}')
+            nueva_frase_seguridad = request.POST.get('nueva_frase_seguridad', '').strip()
+            if not cedula:
+                messages.error(request, 'Debe ingresar su Cédula.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
+            if cedula != user.cedula:
+                messages.error(request, 'Cédula incorrecta.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
+            if nueva_frase_seguridad:
+                if len(nueva_frase_seguridad) < 8:
+                    messages.error(request, 'La nueva Frase de Seguridad debe tener al menos 8 caracteres.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
+                user.set_frase_seguridad(nueva_frase_seguridad)
+            elif frase:
+                if not user.check_frase_seguridad(frase):
+                    messages.error(request, 'Frase de Seguridad o Cédula incorrectos.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
             else:
-                messages.error(request, 'Frase de Seguridad o Cédula incorrectos.')
-                return render(request, self.template_name, {'entorno': entorno})
+                messages.error(request, 'Debe ingresar su frase actual o una nueva frase de seguridad.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
+            request.session['recovery_pending_user_id'] = user.id
+            request.session['recovery_pending_frase'] = nueva_frase_seguridad if nueva_frase_seguridad else ''
+            messages.success(request, 'Frase de seguridad validada. Ahora complete la nueva contraseña.')
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+        pending_id = request.session.get('recovery_pending_user_id')
+        if not pending_id:
+            messages.error(request, 'Debe completar primero el paso de frase de seguridad.')
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
+        try:
+            pending_user = Usuario.objects.get(id=pending_id, deleted_at__isnull=True)
+        except Usuario.DoesNotExist:
+            request.session.pop('recovery_pending_user_id', None)
+            request.session.pop('recovery_pending_frase', None)
+            messages.error(request, 'Usuario de recuperación no encontrado. Inicie de nuevo el proceso.')
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
+        new_password = request.POST.get('new_password', '').strip()
+        new_password_repeat = request.POST.get('new_password_repeat', '').strip()
+        if not new_password:
+            messages.error(request, 'Debe ingresar la nueva contraseña.')
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+        if new_password != new_password_repeat:
+            messages.error(request, 'Las contraseñas no coinciden.')
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+        try:
+            validate_password_strength(new_password)
+        except forms.ValidationError as e:
+            messages.error(request, e.message)
+            return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+        pending_frase = request.session.pop('recovery_pending_frase', '')
+        if pending_frase:
+            pending_user.set_frase_seguridad(pending_frase)
+        pending_user.set_password(new_password)
+        pending_user.save()
+        HistorialContrasena.objects.create(
+            usuario=pending_user,
+            password_hash=pending_user.password
+        )
+        request.session.pop('recovery_pending_user_id', None)
+        messages.success(request, 'Contraseña actualizada correctamente. Ahora puede iniciar sesión con su nueva contraseña.')
         return redirect('usuarios:login')
 
 class RegisterView(View):
@@ -450,6 +669,23 @@ class UsuarioDeleteView(LoginRequiredMixin, View):
         if request.user.rol != 'ADMIN':
             messages.error(request, 'Solo administradores pueden eliminar usuarios.')
             return redirect('usuarios:usuario_list')
+        
+        # Validación obligatoria: 2FA o Frase de seguridad (si no hay 2FA)
+        if request.user.is_2fa_enabled:
+            token = request.POST.get('totp_token', '').strip()
+            if token:
+                device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+                if not device or not device.verify_token(token):
+                    messages.error(request, 'Debe ingresar su código 2FA válido para realizar esta acción.')
+                    return redirect('usuarios:usuario_list')
+            else:
+                request.session['delete_user_id'] = pk
+                return redirect('usuarios:confirm_delete_2fa')
+        else:
+            # Flujo local: obligar a usar la frase de seguridad
+            request.session['delete_user_id'] = pk
+            return redirect('usuarios:confirm_delete_2fa')
+                
         obj = get_object_or_404(Usuario, pk=pk, deleted_at__isnull=True)
         if obj == request.user:
             messages.error(request, 'No puedes eliminarte a ti mismo.')

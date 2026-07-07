@@ -100,6 +100,12 @@
             </li>
             <div class="sidebar-section-label">Registro de Actividad</div>
         <li class="sidebar-nav-item">
+            <a href="{% url 'expedientes:archivados_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'archivados_list' %}active{% endif %}">
+                <i class="bi bi-archive"></i>
+                <span>Expedientes Archivados</span>
+            </a>
+        </li>
+        <li class="sidebar-nav-item">
             <a href="{% url 'expedientes:actuacion_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'actuacion_list' %}active{% endif %}">
                 <i class="bi bi-journal-text"></i>
                 <span>Actuaciones</span>

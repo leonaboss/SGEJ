@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Archivados | SGEJ{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small bg-transparent mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'expedientes:dashboard' %}" class="text-decoration-none">Inicio</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Expedientes Archivados</li>
+    </ol>
+</nav>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2 py-3 px-3">
+        <h3 class="h5 fw-bold mb-0">Expedientes Archivados</h3>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+                <input type="text" name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="Buscar..." style="width:180px;">
+                <button class="btn btn-dark btn-sm" type="submit"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+                <tr>
+                    <th>N° Expediente</th>
+                    <th>Módulo</th>
+                    <th>Nombre y Apellido</th>
+                    <th>Cédula</th>
+                    <th>Motivo</th>
+                    <th>Estatus</th>
+                    <th class="text-center" style="width: 70px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in expedientes %}
+                <tr>
+                    <td><span class="fw-semibold">{{ exp.numero_expediente }}</span></td>
+                    <td><span class="badge bg-light text-dark border">{{ exp.get_tipo_modulo_display }}</span></td>
+                    <td>{{ exp.personal.get_full_name|default:"-" }}</td>
+                    <td>{{ exp.personal.cedula|default:"-" }}</td>
+                    <td>{{ exp.motivo.descripcion|default:"-"|truncatechars:50 }}</td>
+                    <td>{% include 'components/estatus_badge.html' with estatus=exp.estatus %}</td>
+                    <td class="text-center">
+                        <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox fs-1 text-muted"></i>
+                            <p class="text-muted mt-2">No hay expedientes archivados.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

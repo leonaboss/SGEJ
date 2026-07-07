@@ -19,6 +19,7 @@ urlpatterns = [
     path('usuarios/editar/<int:pk>/', views.UsuarioUpdateView.as_view(), name='usuario_update'),
     path('usuarios/toggle-bloqueo/<int:pk>/', views.UsuarioToggleBlockView.as_view(), name='usuario_toggle_block'),
     path('2fa/confirm-block/', views.ConfirmBlock2FAView.as_view(), name='confirm_block_2fa'),
+    path('2fa/confirm-delete/', views.ConfirmDelete2FAView.as_view(), name='confirm_delete_2fa'),
     path('recovery/reset/', views.RecoveryResetView.as_view(), name='recovery_reset'),
     path('usuarios/eliminar/<int:pk>/', views.UsuarioDeleteView.as_view(), name='usuario_delete'),
     path('exportar/usuarios/', views.ExportarUsuariosExcelView.as_view(), name='exportar_usuarios'),

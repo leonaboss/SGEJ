@@ -1,6 +1,21 @@
 from django import forms
 from django.contrib.auth.hashers import check_password
 from .models import Usuario, HistorialContrasena
+import re
+
+
+def validate_password_strength(password):
+    if len(password) < 16:
+        raise forms.ValidationError('La contraseña debe tener al menos 16 caracteres.')
+    if not re.search(r'[A-Za-z]', password):
+        raise forms.ValidationError('La contraseña debe contener al menos una letra.')
+    if not re.search(r'[A-Z]', password):
+        raise forms.ValidationError('La contraseña debe contener al menos una letra mayúscula.')
+    if not re.search(r'\d', password):
+        raise forms.ValidationError('La contraseña debe contener al menos un número.')
+    if not re.search(r'[!@#$%^&*()_+\-=[\]{};\'"\\|,.<>/?~`]', password):
+        raise forms.ValidationError('La contraseña debe contener al menos un carácter especial como @.')
+    return password
 
 
 def clean_personal_text(value):
@@ -44,18 +59,41 @@ class PersonalTextFieldMixin:
         value = self.cleaned_data.get('personal')
         if not value:
             return None
-        return clean_personal_text(value)
+        from apps.expedientes.models import Personal
+        if isinstance(value, Personal):
+            return value
+        if isinstance(value, int):
+            try:
+                return Personal.objects.get(id=value)
+            except Personal.DoesNotExist:
+                raise forms.ValidationError('Personal no encontrado.')
+        if isinstance(value, str):
+            if value.isdigit():
+                try:
+                    return Personal.objects.get(id=int(value))
+                except Personal.DoesNotExist:
+                    raise forms.ValidationError('Personal no encontrado.')
+            return clean_personal_text(value)
+        return value
 
 
 class UsuarioCreationForm(forms.ModelForm, PersonalTextFieldMixin):
     password = forms.CharField(
         label='Contraseña', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
         min_length=16,
-        help_text='Mínimo 16 caracteres.'
+        required=True,
+        help_text='Mínimo 16 caracteres, debe incluir letras, números, una mayúscula y un carácter especial como @.'
     )
     password_repeat = forms.CharField(
         label='Repetir Contraseña', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
-        min_length=16
+        min_length=16,
+        required=True,
+    )
+    frase_seguridad = forms.CharField(
+        label='Frase de Seguridad', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        min_length=8,
+        required=True,
+        help_text='Se usará para recuperar su contraseña si olvida el correo o la contraseña.',
     )
 
     def __init__(self, *args, **kwargs):
@@ -78,7 +116,7 @@ class UsuarioCreationForm(forms.ModelForm, PersonalTextFieldMixin):
         }
 
     def clean_usuario(self):
-        value = self.cleaned_data.get('usuario', '').strip()
+        value = (self.cleaned_data.get('usuario') or '').strip()
         if not value:
             raise forms.ValidationError('El nombre de usuario es obligatorio.')
         if len(value) < 3:
@@ -86,7 +124,7 @@ class UsuarioCreationForm(forms.ModelForm, PersonalTextFieldMixin):
         return value
 
     def clean_cedula(self):
-        value = self.cleaned_data.get('cedula', '').strip().upper()
+        value = (self.cleaned_data.get('cedula') or '').strip().upper()
         if not value:
             raise forms.ValidationError('La cédula es obligatoria.')
         if value.startswith('V-'):
@@ -102,7 +140,7 @@ class UsuarioCreationForm(forms.ModelForm, PersonalTextFieldMixin):
         return f'V-{numeric}'
 
     def clean_correo(self):
-        value = self.cleaned_data.get('correo', '').strip()
+        value = (self.cleaned_data.get('correo') or '').strip()
         if not value:
             raise forms.ValidationError('El correo electrónico es obligatorio.')
         if '@' not in value:
@@ -110,10 +148,16 @@ class UsuarioCreationForm(forms.ModelForm, PersonalTextFieldMixin):
         return value
 
     def clean_telefono(self):
-        value = self.cleaned_data.get('telefono', '').strip()
+        value = (self.cleaned_data.get('telefono') or '').strip()
         if value and not value.isdigit():
             raise forms.ValidationError('El teléfono debe contener solo números.')
         return value
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password', '')
+        if password:
+            validate_password_strength(password)
+        return password
 
     def clean(self):
         cleaned_data = super().clean()
@@ -128,19 +172,52 @@ class UsuarioCreationForm(forms.ModelForm, PersonalTextFieldMixin):
         password_plana = self.cleaned_data['password']
         usuario.set_password(password_plana)
         usuario._password_plana_temporal = password_plana
+        usuario.set_frase_seguridad(self.cleaned_data.get('frase_seguridad', ''))
         if commit:
             usuario.save()
         return usuario
 
 
 class UsuarioChangeForm(forms.ModelForm, PersonalTextFieldMixin):
+    frase_seguridad = forms.CharField(
+        label='Frase de Seguridad', 
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 
+            'autocomplete': 'off',  # Evita que el navegador sugiera contraseñas
+            'readonly': False,
+        }),
+        required=False,
+        min_length=8,
+        help_text='Dejar en blanco para conservar la frase actual. (La frase no se puede visualizar por seguridad).',
+    )
 
     def __init__(self, *args, **kwargs):
         roles_filter = kwargs.pop('roles_filter', None)
         super().__init__(*args, **kwargs)
+        # --- CORRECCIÓN CRÍTICA ---
+        # Forzamos que este campo NO tome valores de la instancia (evita mostrar hashes o contraseñas)
+        self.fields['frase_seguridad'].initial = ''
+        self.fields['frase_seguridad'].widget.attrs['value'] = ''
+        # ---------------------------
         if roles_filter:
             self.fields['rol'].choices = roles_filter
         self._init_personal_textfield()
+
+    def clean_frase_seguridad(self):
+        frase = self.cleaned_data.get('frase_seguridad', '').strip()
+        if frase and len(frase) < 8:
+            raise forms.ValidationError('La frase de seguridad debe tener al menos 8 caracteres.')
+        return frase
+
+    def save(self, commit=True):
+        usuario = super().save(commit=False)
+        frase = self.cleaned_data.get('frase_seguridad', '').strip()
+        if frase:
+            usuario.set_frase_seguridad(frase)
+        # Si no hay frase, no hacemos nada (mantenemos la anterior)
+        if commit:
+            usuario.save()
+        return usuario
 
     class Meta:
         model = Usuario
@@ -171,13 +248,13 @@ class UsuarioChangeForm(forms.ModelForm, PersonalTextFieldMixin):
         return f'V-{numeric}'
 
     def clean_correo(self):
-        value = self.cleaned_data.get('correo', '').strip()
+        value = (self.cleaned_data.get('correo') or '').strip()
         if value and '@' not in value:
             raise forms.ValidationError('Ingrese un correo electrónico válido.')
         return value
 
     def clean_telefono(self):
-        value = self.cleaned_data.get('telefono', '').strip()
+        value = (self.cleaned_data.get('telefono') or '').strip()
         if value and not value.isdigit():
             raise forms.ValidationError('El teléfono debe contener solo números.')
         return value
@@ -187,11 +264,19 @@ class RegistroUsuarioForm(forms.ModelForm, PersonalTextFieldMixin):
     password = forms.CharField(
         label='Contraseña', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
         min_length=16,
-        help_text='Mínimo 16 caracteres.'
+        required=True,
+        help_text='Mínimo 16 caracteres, debe incluir letras, números, una mayúscula y un carácter especial como @.'
     )
     password_repeat = forms.CharField(
         label='Repetir Contraseña', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
-        min_length=16
+        min_length=16,
+        required=True,
+    )
+    frase_seguridad = forms.CharField(
+        label='Frase de Seguridad', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        min_length=8,
+        required=True,
+        help_text='Se usará para recuperar su contraseña si olvida el correo o la contraseña.',
     )
 
     def __init__(self, *args, **kwargs):
@@ -214,7 +299,7 @@ class RegistroUsuarioForm(forms.ModelForm, PersonalTextFieldMixin):
         }
 
     def clean_usuario(self):
-        value = self.cleaned_data.get('usuario', '').strip()
+        value = (self.cleaned_data.get('usuario') or '').strip()
         if not value:
             raise forms.ValidationError('El nombre de usuario es obligatorio.')
         if len(value) < 3:
@@ -222,7 +307,7 @@ class RegistroUsuarioForm(forms.ModelForm, PersonalTextFieldMixin):
         return value
 
     def clean_cedula(self):
-        value = self.cleaned_data.get('cedula', '').strip().upper()
+        value = (self.cleaned_data.get('cedula') or '').strip().upper()
         if not value:
             raise forms.ValidationError('La cédula es obligatoria.')
         if value.startswith('V-'):
@@ -238,7 +323,7 @@ class RegistroUsuarioForm(forms.ModelForm, PersonalTextFieldMixin):
         return f'V-{numeric}'
 
     def clean_correo(self):
-        value = self.cleaned_data.get('correo', '').strip()
+        value = (self.cleaned_data.get('correo') or '').strip()
         if not value:
             raise forms.ValidationError('El correo electrónico es obligatorio.')
         if '@' not in value:
@@ -246,10 +331,16 @@ class RegistroUsuarioForm(forms.ModelForm, PersonalTextFieldMixin):
         return value
 
     def clean_telefono(self):
-        value = self.cleaned_data.get('telefono', '').strip()
+        value = (self.cleaned_data.get('telefono') or '').strip()
         if value and not value.isdigit():
             raise forms.ValidationError('El teléfono debe contener solo números.')
         return value
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password', '')
+        if password:
+            validate_password_strength(password)
+        return password
 
     def clean(self):
         cleaned_data = super().clean()
@@ -264,6 +355,7 @@ class RegistroUsuarioForm(forms.ModelForm, PersonalTextFieldMixin):
         password_plana = self.cleaned_data['password']
         usuario.set_password(password_plana)
         usuario._password_plana_temporal = password_plana
+        usuario.set_frase_seguridad(self.cleaned_data.get('frase_seguridad', ''))
         if commit:
             usuario.save()
         return usuario
@@ -275,7 +367,8 @@ class PasswordChangeForm(forms.Form):
     )
     nueva_password = forms.CharField(
         label='Nueva Contraseña', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
-        min_length=16
+        min_length=16,
+        help_text='Mínimo 16 caracteres, letras, números, una mayúscula y un carácter especial como @.'
     )
     nueva_password_repeat = forms.CharField(
         label='Repetir Nueva Contraseña', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
@@ -296,6 +389,8 @@ class PasswordChangeForm(forms.Form):
 
     def clean_nueva_password(self):
         password = self.cleaned_data.get('nueva_password', '')
+        if password:
+            validate_password_strength(password)
         historial = HistorialContrasena.objects.filter(
             usuario=self.usuario
         ).order_by('-created_at')[:3]

@@ -90,6 +90,20 @@
       });
     });
 
+    // Activar autocomplete al enfocar campos
+    var userField = document.getElementById('usuario');
+    if (userField) {
+      userField.addEventListener('focus', function () {
+        this.setAttribute('autocomplete', 'username');
+      });
+    }
+    var passField = document.getElementById('password');
+    if (passField) {
+      passField.addEventListener('focus', function () {
+        this.setAttribute('autocomplete', 'current-password');
+      });
+    }
+
     document.querySelectorAll('input[name="telefono"]').forEach(function (input) {
       if (input.dataset.phoneFilter) return;
       input.dataset.phoneFilter = 'true';

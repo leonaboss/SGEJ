@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.views.generic import TemplateView, ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import models
@@ -106,7 +107,7 @@ class ExpedienteModuloListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         tipo = self.kwargs.get('tipo_modulo', 'DESP')
-        queryset = Expediente.objects.filter(
+        queryset = Expediente.objects.for_user(self.request.user).filter(
             tipo_modulo=tipo, deleted_at__isnull=True
         ).select_related('personal', 'motivo', 'cargo', 'tribunal', 'usuario')
         if tipo == 'SUST':
@@ -164,9 +165,14 @@ class ExpedienteDetailView(LoginRequiredMixin, DetailView):
         context['notificaciones_count'] = Notificacion.objects.filter(
             usuario=self.request.user, leido=False, deleted_at__isnull=True
         ).count()
+        
+        # Filtramos actuaciones por el objeto actual (usando GenericRelation si existiera, o filtrando por content_type)
         context['actuaciones'] = Actuacion.objects.filter(
-            expediente=self.object, deleted_at__isnull=True
-        ).select_related('usuario', 'documento').order_by('-created_at')
+            content_type=ContentType.objects.get_for_model(Expediente),
+            object_id=self.object.pk,
+            deleted_at__isnull=True
+        ).select_related('usuario').order_by('-created_at')
+        
         context['audiencias'] = AudienciaAgenda.objects.filter(
             expediente=self.object, deleted_at__isnull=True
         ).order_by('fecha_hora')
@@ -278,6 +284,32 @@ class ExpedienteDeleteView(LoginRequiredMixin, View):
         return redirect('expedientes:dashboard')
 
 
+class ExpedienteArchivadosListView(LoginRequiredMixin, ListView):
+    model = Expediente
+    template_name = 'expedientes/archivados_list.html'
+    context_object_name = 'expedientes'
+    paginate_by = 20
+
+    def get_queryset(self):
+        qs = Expediente.objects.for_user(self.request.user).filter(
+            is_archivado=True, deleted_at__isnull=True
+        )
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(
+                models.Q(numero_expediente__icontains=q) |
+                models.Q(personal__nombres__icontains=q) |
+                models.Q(personal__apellidos__icontains=q) |
+                models.Q(personal__cedula__icontains=q)
+            )
+        return qs.select_related('personal', 'motivo', 'cargo', 'tribunal', 'usuario')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('q', '')
+        return context
+
+
 class ActuacionListView(LoginRequiredMixin, ListView):
     model = Actuacion
     template_name = 'expedientes/actuacion_list.html'
@@ -285,12 +317,11 @@ class ActuacionListView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        qs = Actuacion.objects.filter(deleted_at__isnull=True).select_related('expediente', 'usuario')
-        if self.request.user.rol != 'ADMIN':
-            qs = qs.filter(usuario=self.request.user)
+        # Mantenemos el filtro por usuario si el modelo Actuacion lo soporta
+        qs = Actuacion.objects.for_user(self.request.user).filter(deleted_at__isnull=True).select_related('usuario', 'content_type')
         q = self.request.GET.get('q', '').strip()
         if q:
-            qs = qs.filter(descripcion__icontains=q) | qs.filter(expediente__numero_expediente__icontains=q)
+            qs = qs.filter(descripcion__icontains=q)
         return qs.order_by('-created_at')
 
     def get_context_data(self, **kwargs):
@@ -313,7 +344,7 @@ class ActuacionCreateView(LoginRequiredMixin, View):
         form = ActuacionForm(request.POST)
         if form.is_valid():
             actuacion = form.save(commit=False)
-            actuacion.expediente = expediente
+            actuacion.content_object = expediente
             actuacion.usuario = request.user
             actuacion.save()
             messages.success(request, 'Actuación registrada.')
@@ -348,11 +379,15 @@ class ActuacionUpdateView(LoginRequiredMixin, View):
 class ActuacionDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk):
         actuacion = get_object_or_404(Actuacion, pk=pk, deleted_at__isnull=True)
-        expediente_pk = actuacion.expediente.pk
+        expediente_pk = None
+        if actuacion.content_type.model == 'expediente':
+            expediente_pk = actuacion.object_id
         actuacion.deleted_at = timezone.now()
         actuacion.save(update_fields=['deleted_at'])
         messages.success(request, 'Actuación eliminada.')
-        return redirect('expedientes:expediente_detail', pk=expediente_pk)
+        if expediente_pk:
+            return redirect('expedientes:expediente_detail', pk=expediente_pk)
+        return redirect('expedientes:dashboard')
 
 
 class AudienciaAgendaCreateView(LoginRequiredMixin, View):
@@ -962,7 +997,7 @@ class ExpedienteArchivarView(LoginRequiredMixin, View):
         expediente.save(update_fields=['is_archivado'])
         messages.success(request, f'Expediente {expediente.numero_expediente} archivado.')
         Actuacion.objects.create(
-            expediente=expediente,
+            content_object=expediente,
             descripcion=f"Expediente {expediente.numero_expediente} archivado por {request.user.get_full_name()}",
             usuario=request.user,
         )
@@ -976,7 +1011,7 @@ class ExpedienteDesarchivarView(LoginRequiredMixin, View):
         expediente.save(update_fields=['is_archivado'])
         messages.success(request, f'Expediente {expediente.numero_expediente} desarchivado.')
         Actuacion.objects.create(
-            expediente=expediente,
+            content_object=expediente,
             descripcion=f"Expediente {expediente.numero_expediente} desarchivado por {request.user.get_full_name()}",
             usuario=request.user,
         )

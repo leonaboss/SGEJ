@@ -3,8 +3,17 @@ App: expedientes
 Modelos del núcleo de negocio jurídico.
 Cada modelo mapea fielmente el DDL del Plan Maestro.
 """
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from apps.usuarios.models import BaseQuerySet
 
+class BaseManager(models.Manager):
+    def get_queryset(self):
+        return BaseQuerySet(self.model, using=self._db)
+    
+    def for_user(self, user):
+        return self.get_queryset().for_user(user)
 
 class SujetoProcesal(models.Model):
     """Directorio parametrizado de sujetos procesales."""
@@ -157,6 +166,8 @@ class Expediente(models.Model):
     Modelo maestro de expedientes jurídicos.
     El campo tipo_modulo determina a qué módulo operativo pertenece.
     """
+    objects = BaseManager()
+    
     class ModuloChoices(models.TextChoices):
         DESP = 'DESP', 'Calificación de Despido / Recientes'
         INSP = 'INSP', 'Casos de Inspectoría / Horas Extra / Reclamos'
@@ -270,15 +281,15 @@ class Expediente(models.Model):
 
 
 class Actuacion(models.Model):
-    """Actuaciones procesales vinculadas a un expediente."""
-    expediente = models.ForeignKey(
-        Expediente, on_delete=models.PROTECT, db_column='expediente_id'
-    )
+    """Actuaciones del usuario (generales o vinculadas a un expediente/documento)."""
+    objects = BaseManager()
+    
+    # Vinculación flexible (Polimórfica)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
     descripcion = models.TextField()
-    documento = models.ForeignKey(
-        'documentos.Documento', on_delete=models.PROTECT,
-        blank=True, null=True, db_column='documento_id'
-    )
     usuario = models.ForeignKey(
         'usuarios.Usuario', on_delete=models.PROTECT, db_column='usuario_id'
     )
@@ -290,11 +301,13 @@ class Actuacion(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Actuación en {self.expediente.numero_expediente}"
+        return f"Actuación de {self.usuario} ({self.created_at})"
 
 
 class AudienciaAgenda(models.Model):
     """Agenda de audiencias y eventos con alertas 30/60/90 días."""
+    objects = BaseManager()
+    
     class EventoChoices(models.TextChoices):
         AUD = 'AUD', 'Audiencia Judicial'
         LAPS = 'LAPS', 'Lapso Procesal'

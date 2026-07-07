@@ -19,7 +19,7 @@
     <div class="sgej-login-card animate-fade-in-up">
         <div class="sgej-login-header">
             <img src="{% static 'img/logo-uptag.png' %}" alt="UPTAG Logo">
-            <h1>SIACE | SGEJ</h1>
+            <h1>SGEJ</h1>
             <p>Recuperación de Contraseña</p>
         </div>
         
@@ -49,11 +49,30 @@
                         <input type="text" class="form-control border-start-0 ps-0" id="usuario" name="usuario" required autofocus autocomplete="username">
                     </div>
                 </div>
-                
-                {% if entorno == 'localhost' %}
+                {% if stage == 'security_question' %}
+                <input type="hidden" name="stage" value="security_question">
+                <input type="hidden" name="usuario" value="{{ usuario }}">
                 <div class="alert alert-warning small py-2 mb-3">
-                    <i class="bi bi-info-circle-fill me-1"></i> Flujo local activo. Ingrese su Cédula y la Frase Maestra de Seguridad.
+                    <i class="bi bi-shield-lock-fill me-1"></i> Verificación de seguridad adicional requerida para personal autorizado.
                 </div>
+                <div class="mb-4">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Pregunta de Seguridad</label>
+                    <p class="form-control-plaintext bg-light p-2 rounded">{{ pregunta }}</p>
+                </div>
+                <div class="mb-4">
+                    <label for="respuesta_seguridad" class="form-label text-muted small fw-bold text-uppercase">Respuesta</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-key-fill text-muted"></i></span>
+                        <input type="password" class="form-control border-start-0 ps-0" id="respuesta_seguridad" name="respuesta_seguridad" required>
+                    </div>
+                </div>
+                {% elif stage == 'phrase' %}
+
+                <input type="hidden" name="stage" value="{{ stage|default:'phrase' }}">
+                <div class="alert alert-warning small py-2 mb-3">
+                    <i class="bi bi-info-circle-fill me-1"></i> Flujo local activo. Complete primero la Frase de Seguridad, luego continúe con la nueva contraseña.
+                </div>
+                {% if stage == 'phrase' %}
                 <div class="mb-3">
                     <label for="cedula" class="form-label text-muted small fw-bold text-uppercase">Cédula de Identidad</label>
                     <div class="input-group">
@@ -62,20 +81,110 @@
                     </div>
                 </div>
                 <div class="mb-4">
-                    <label for="frase_seguridad" class="form-label text-muted small fw-bold text-uppercase">Frase de Seguridad Maestra</label>
+                    <label for="frase_seguridad" class="form-label text-muted small fw-bold text-uppercase">Frase de Seguridad</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-check text-muted"></i></span>
-                        <input type="password" class="form-control border-start-0 ps-0" id="frase_seguridad" name="frase_seguridad" required>
+                        <input type="password" class="form-control border-start-0 ps-0" id="frase_seguridad" name="frase_seguridad">
                     </div>
                 </div>
-                {% else %}
+                <div class="alert alert-info small py-2 mb-3">
+                    <i class="bi bi-info-circle-fill me-1"></i> Si olvidó su frase de seguridad actual, deje ese campo en blanco e ingrese una nueva frase de seguridad.
+                </div>
                 <div class="mb-4">
-                    <label for="cedula" class="form-label text-muted small fw-bold text-uppercase">Cédula de Identidad</label>
+                    <label for="nueva_frase_seguridad" class="form-label text-muted small fw-bold text-uppercase">Nueva Frase de Seguridad</label>
                     <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-card-text text-muted"></i></span>
-                        <input type="text" class="form-control border-start-0 ps-0" id="cedula" name="cedula" required>
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-lock text-muted"></i></span>
+                        <input type="password" class="form-control border-start-0 ps-0" id="nueva_frase_seguridad" name="nueva_frase_seguridad" autocomplete="new-password">
+                    </div>
+                    <div class="form-text small text-muted">Si no recuerda su frase antigua, deje el campo de frase actual vacío y solo ingrese esta nueva frase.</div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <span class="badge bg-secondary">Paso 1 de 2</span>
+                        <p class="small text-muted mb-0">Validar o actualizar la frase de seguridad.</p>
                     </div>
                 </div>
+                {% elif stage == 'password' %}
+                <input type="hidden" name="usuario" value="{{ usuario }}">
+                <input type="hidden" name="stage" value="password">
+                <div class="alert alert-success small py-2 mb-3">
+                    <i class="bi bi-check-circle-fill me-1"></i> Frase de seguridad validada. Ahora ingrese su nueva contraseña.
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <span class="badge bg-secondary">Paso 2 de 2</span>
+                        <p class="small text-muted mb-0">Ingrese y confirme su nueva contraseña.</p>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="new_password" class="form-label text-muted small fw-bold text-uppercase">Nueva Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                        <input type="password" class="form-control border-start-0 ps-0" id="new_password" name="new_password" required minlength="16" pattern="(?=^.{16,}$)(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&]).*$" title="Mínimo 16 caracteres, al menos una letra, un número y un carácter especial como @" autocomplete="new-password">
+                    </div>
+                    <div class="form-text small text-muted">Ingrese la contraseña que desea usar.</div>
+                </div>
+                <div class="mb-4">
+                    <label for="new_password_repeat" class="form-label text-muted small fw-bold text-uppercase">Repetir Nueva Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                        <input type="password" class="form-control border-start-0 ps-0" id="new_password_repeat" name="new_password_repeat" required minlength="16" autocomplete="new-password">
+                    </div>
+                    <div class="form-text small text-muted">Repita su nueva contraseña.</div>
+                </div>
+                {% endif %}
+                {% else %}
+                <input type="hidden" name="stage" value="{{ stage|default:'email' }}">
+                <div class="alert alert-info small py-2 mb-3">
+                    <i class="bi bi-envelope-check-fill me-1"></i> En producción se enviará un código de verificación a su correo registrado para restablecer la contraseña.
+                </div>
+                {% if stage == 'security_question' %}
+                <input type="hidden" name="stage" value="security_question">
+                <input type="hidden" name="usuario" value="{{ usuario }}">
+                <div class="alert alert-warning small py-2 mb-3">
+                    <i class="bi bi-shield-lock-fill me-1"></i> Verificación de seguridad adicional requerida para personal autorizado.
+                </div>
+                <div class="mb-4">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Pregunta de Seguridad</label>
+                    <p class="form-control-plaintext bg-light p-2 rounded">{{ pregunta }}</p>
+                </div>
+                <div class="mb-4">
+                    <label for="respuesta_seguridad" class="form-label text-muted small fw-bold text-uppercase">Respuesta</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-key-fill text-muted"></i></span>
+                        <input type="password" class="form-control border-start-0 ps-0" id="respuesta_seguridad" name="respuesta_seguridad" required>
+                    </div>
+                </div>
+                {% elif stage == 'code' %}
+                <div class="mb-4">
+                    <label for="recovery_code" class="form-label text-muted small fw-bold text-uppercase">Código de Verificación</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-lock text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-0" id="recovery_code" name="recovery_code" required autocomplete="one-time-code">
+                    </div>
+                    <div class="form-text small text-muted">Ingrese el código que recibió por correo.</div>
+                </div>
+                {% elif stage == 'password' %}
+                <div class="alert alert-success small py-2 mb-3">
+                    <i class="bi bi-check-circle-fill me-1"></i> Código verificado. Ahora ingrese su nueva contraseña.
+                </div>
+                <div class="mb-4">
+                    <label for="new_password" class="form-label text-muted small fw-bold text-uppercase">Nueva Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                        <input type="password" class="form-control border-start-0 ps-0" id="new_password" name="new_password" required minlength="16" pattern="(?=^.{16,}$)(?=.*[A-Z])(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&]).*$" title="Mínimo 16 caracteres, con mayúscula, letra, número y carácter especial" autocomplete="new-password">
+                    </div>
+                    <div class="form-text small text-muted">Ingrese la contraseña que desea usar.</div>
+                </div>
+                <div class="mb-4">
+                    <label for="new_password_repeat" class="form-label text-muted small fw-bold text-uppercase">Repetir Nueva Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                        <input type="password" class="form-control border-start-0 ps-0" id="new_password_repeat" name="new_password_repeat" required minlength="16" autocomplete="new-password">
+                    </div>
+                    <div class="form-text small text-muted">Repita su nueva contraseña.</div>
+                </div>
+                {% endif %}
                 {% endif %}
                 
                 <button type="submit" class="btn btn-sgej-primary w-100 py-2 mb-3">

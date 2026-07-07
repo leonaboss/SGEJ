@@ -18,7 +18,7 @@
     <div class="sgej-login-card animate-fade-in-up">
         <div class="sgej-login-header">
             <img src="{% static 'img/logo-uptag.png' %}" alt="UPTAG Logo">
-            <h1>SIACE | SGEJ</h1>
+            <h1>SGEJ</h1>
             <p>Creación de Cuenta de Usuario</p>
         </div>
         
@@ -130,9 +130,9 @@
                         <label for="password" class="form-label text-muted small fw-bold text-uppercase">Contraseña</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-lock text-muted"></i></span>
-                            <input type="password" class="form-control border-start-0 ps-0" id="password" name="password" required minlength="16" autocomplete="new-password">
+                            <input type="password" class="form-control border-start-0 ps-0" id="password" name="password" required minlength="16" pattern="(?=^.{16,}$)(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&]).*$" title="Mínimo 16 caracteres, al menos una letra, un número y un carácter especial como @" autocomplete="new-password">
                         </div>
-                        <div class="text-muted small mt-1">Mínimo 16 caracteres.</div>
+                        <div class="text-muted small mt-1">Mínimo 16 caracteres, debe incluir letras, números y un carácter especial como @.</div>
                         {% if form.password.errors %}
                         <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
                         {% endif %}
@@ -143,9 +143,23 @@
                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-lock text-muted"></i></span>
                             <input type="password" class="form-control border-start-0 ps-0" id="password_repeat" name="password_repeat" required minlength="16" autocomplete="new-password">
                         </div>
-                        <div class="text-muted small mt-1">Repita la contraseña (mín. 16 caracteres).</div>
+                        <div class="text-muted small mt-1">Repita la contraseña. Debe ser igual a la anterior y cumplir con los requisitos de seguridad.</div>
                         {% if form.password_repeat.errors %}
                         <div class="text-danger small mt-1">{{ form.password_repeat.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <label for="frase_seguridad" class="form-label text-muted small fw-bold text-uppercase">Frase de Seguridad</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-check text-muted"></i></span>
+                            <input type="password" class="form-control border-start-0 ps-0" id="frase_seguridad" name="frase_seguridad" required minlength="8" autocomplete="new-password">
+                        </div>
+                        <div class="text-muted small mt-1">Esta frase le permitirá recuperar su contraseña si la olvida.</div>
+                        {% if form.frase_seguridad.errors %}
+                        <div class="text-danger small mt-1">{{ form.frase_seguridad.errors.0 }}</div>
                         {% endif %}
                     </div>
                 </div>

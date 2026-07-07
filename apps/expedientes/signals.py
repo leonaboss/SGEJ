@@ -13,7 +13,7 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
     if created:
         desc = f"Expediente {instance.numero_expediente} creado ({instance.get_tipo_modulo_display()})"
         Actuacion.objects.create(
-            expediente=instance,
+            content_object=instance,
             descripcion=desc,
             usuario=instance.usuario,
         )
@@ -64,7 +64,7 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
     if cambios:
         desc = f"Expediente {instance.numero_expediente}: {', '.join(cambios)}"
         Actuacion.objects.create(
-            expediente=instance,
+            content_object=instance,
             descripcion=desc,
             usuario=instance.usuario,
         )
@@ -80,13 +80,18 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
 def notificar_nueva_actuacion(sender, instance, created, **kwargs):
     if kwargs.get('raw', False) or not created:
         return
-    if not instance.expediente or not instance.expediente.usuario:
+    # Verificar si la actuación está vinculada a un expediente
+    expediente = None
+    if instance.content_type.model == 'expediente':
+        expediente = instance.content_object
+    
+    if not expediente or not expediente.usuario:
         return
-    if instance.usuario == instance.expediente.usuario:
+    if instance.usuario == expediente.usuario:
         return
-    desc = f"Nueva actuación en expediente {instance.expediente.numero_expediente}: {instance.descripcion[:80]}"
+    desc = f"Nueva actuación en expediente {expediente.numero_expediente}: {instance.descripcion[:80]}"
     NotificacionService.crear(
-        usuario=instance.expediente.usuario,
+        usuario=expediente.usuario,
         mensaje=desc,
         tipo_alerta='actuacion',
     )

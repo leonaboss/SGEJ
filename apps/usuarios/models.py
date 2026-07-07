@@ -4,11 +4,21 @@ Modelos de autenticación, RBAC y auditoría.
 Responsabilidad: Identidad, roles, historial de contraseñas y bitácora.
 """
 from django.db import models
+from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
 
+class BaseQuerySet(models.QuerySet):
+    """QuerySet base para aislamiento de datos."""
+    def for_user(self, user):
+        if user.is_authenticated and user.rol == 'ADMIN':
+            return self
+        return self.filter(usuario=user)
+
 class UsuarioManager(BaseUserManager):
     """Manager personalizado que usa 'usuario' como campo de login."""
+    def get_queryset(self):
+        return BaseQuerySet(self.model, using=self._db)
 
     def create_user(self, usuario, password=None, **extra_fields):
         if not usuario:
@@ -51,6 +61,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         null=True,
     )
     totp_secret = models.CharField(max_length=64, blank=True, null=True)
+    frase_seguridad = models.CharField(max_length=255, blank=True, null=True)
     is_2fa_enabled = models.BooleanField(default=False)
     intentos_fallidos = models.IntegerField(default=0)
     is_bloqueado = models.BooleanField(default=False)
@@ -88,6 +99,17 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"{self.usuario} ({self.get_full_name()})"
 
+    def set_frase_seguridad(self, frase):
+        if frase:
+            self.frase_seguridad = make_password(frase)
+        else:
+            self.frase_seguridad = None
+
+    def check_frase_seguridad(self, frase):
+        if not self.frase_seguridad or not frase:
+            return False
+        return check_password(frase, self.frase_seguridad)
+
 
 class HistorialContrasena(models.Model):
     """Historial inmutable de contraseñas previas (máx. 3 para validación)."""
@@ -106,6 +128,20 @@ class HistorialContrasena(models.Model):
 
     def __str__(self):
         return f"Historial #{self.id} - {self.usuario.usuario}"
+
+class SecurityQuestion(models.Model):
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='security_question')
+    pregunta = models.CharField(max_length=255)
+    respuesta_hash = models.CharField(max_length=255)
+
+    def set_respuesta(self, respuesta):
+        self.respuesta_hash = make_password(respuesta)
+
+    def check_respuesta(self, respuesta):
+        return check_password(respuesta, self.respuesta_hash)
+
+    class Meta:
+        db_table = 'security_questions'
 
 
 class BitacoraAuditoria(models.Model):

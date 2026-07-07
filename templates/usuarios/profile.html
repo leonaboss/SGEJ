@@ -37,6 +37,9 @@
                         <div class="mb-3">
                             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
                             {{ field }}
+                            {% if field.name == 'frase_seguridad' %}
+                                <div class="form-text small text-muted">Deje la frase en blanco para conservar la actual. Ingrese una nueva frase para cambiarla.</div>
+                            {% endif %}
                             {% if field.errors %}
                                 <div class="text-danger small">{{ field.errors }}</div>
                             {% endif %}

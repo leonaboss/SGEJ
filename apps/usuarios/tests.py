@@ -1,32 +1,37 @@
-from django.test import TestCase, Client
+from django import forms
+from django.core import mail
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
+from faker import Faker
+from .forms import validate_password_strength
 from .models import Usuario, HistorialContrasena
 from apps.expedientes.models import Personal
 
+fake = Faker('es_VE')
 
 class UsuarioModelTest(TestCase):
     def setUp(self):
         self.personal_admin = Personal.objects.create(
-            nombres='Admin', apellidos='Test', cedula='10000001'
+            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=fake.unique.numerify(text='##########')
         )
         self.admin = Usuario.objects.create_superuser(
-            usuario='admin_test', password='Clave1234!!Segura',
-            personal=self.personal_admin, cedula='10000001'
+            usuario=fake.user_name(), password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+            personal=self.personal_admin, cedula=self.personal_admin.cedula
         )
         self.personal_abogado = Personal.objects.create(
-            nombres='Abogado', apellidos='Test', cedula='10000002'
+            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=fake.unique.numerify(text='##########')
         )
         self.abogado = Usuario.objects.create_user(
-            usuario='abogado_test', password='Clave1234!!Segura',
-            personal=self.personal_abogado, cedula='10000002',
+            usuario=fake.user_name(), password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+            personal=self.personal_abogado, cedula=self.personal_abogado.cedula,
             rol='ABOG'
         )
         self.personal_publico = Personal.objects.create(
-            nombres='Publico', apellidos='Test', cedula='10000003'
+            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=fake.unique.numerify(text='##########')
         )
         self.publico = Usuario.objects.create_user(
-            usuario='publico_test', password='Clave1234!!Segura',
-            personal=self.personal_publico, cedula='10000003',
+            usuario=fake.user_name(), password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+            personal=self.personal_publico, cedula=self.personal_publico.cedula,
             rol='USR_PUBLICO'
         )
 
@@ -36,19 +41,21 @@ class UsuarioModelTest(TestCase):
         self.assertEqual(self.publico.rol, 'USR_PUBLICO')
 
     def test_get_full_name(self):
-        self.assertEqual(self.admin.get_full_name(), 'Admin Test')
+        full_name = f"{self.personal_admin.nombres} {self.personal_admin.apellidos}"
+        self.assertEqual(self.admin.get_full_name(), full_name)
 
     def test_get_rol_display_label(self):
         self.assertEqual(self.admin.get_rol_display_label(), 'Administrador')
         self.assertEqual(self.abogado.get_rol_display_label(), 'Abogado')
 
     def test_default_rol(self):
+        cedula_default = fake.unique.numerify(text='##########')
         personal_default = Personal.objects.create(
-            nombres='Default', apellidos='Test', cedula='10000004'
+            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=cedula_default
         )
         user = Usuario.objects.create_user(
-            usuario='default_test', password='Clave1234!!Segura',
-            personal=personal_default, cedula='10000004'
+            usuario=fake.user_name(), password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+            personal=personal_default, cedula=cedula_default
         )
         self.assertEqual(user.rol, 'USR_PUBLICO')
 
@@ -63,23 +70,25 @@ class UsuarioModelTest(TestCase):
 class LoginTest(TestCase):
     def setUp(self):
         self.client = Client()
+        self.password = fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True)
+        self.username = fake.user_name()
         self.personal = Personal.objects.create(
-            nombres='Test', apellidos='User', cedula='20000001'
+            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=fake.unique.numerify(text='##########')
         )
         self.user = Usuario.objects.create_superuser(
-            usuario='testuser', password='Clave1234!!Segura',
-            personal=self.personal, cedula='20000001'
+            usuario=self.username, password=self.password,
+            personal=self.personal, cedula=self.personal.cedula
         )
 
     def test_login_success(self):
         response = self.client.post(reverse('usuarios:login'), {
-            'usuario': 'testuser', 'password': 'Clave1234!!Segura'
+            'usuario': self.username, 'password': self.password
         })
         self.assertRedirects(response, reverse('expedientes:dashboard'))
 
     def test_login_invalid_password(self):
         response = self.client.post(reverse('usuarios:login'), {
-            'usuario': 'testuser', 'password': 'wrongpass'
+            'usuario': self.username, 'password': 'wrongpass'
         })
         self.assertEqual(response.status_code, 200)
         self.user.refresh_from_db()
@@ -88,7 +97,7 @@ class LoginTest(TestCase):
     def test_login_bloqueado_tras_3_intentos(self):
         for _ in range(3):
             self.client.post(reverse('usuarios:login'), {
-                'usuario': 'testuser', 'password': 'wrongpass'
+                'usuario': self.username, 'password': 'wrongpass'
             })
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_bloqueado)
@@ -97,7 +106,7 @@ class LoginTest(TestCase):
         self.user.is_bloqueado = True
         self.user.save()
         response = self.client.post(reverse('usuarios:login'), {
-            'usuario': 'testuser', 'password': 'Clave1234!!Segura'
+            'usuario': self.username, 'password': self.password
         })
         self.assertContains(response, 'bloqueada')
 
@@ -193,6 +202,55 @@ class FormTest(TestCase):
             usuario='admin', password='Clave1234!!Segura',
             personal=self.personal_admin, cedula='50000001'
         )
+
+    def test_validate_password_strength_requires_uppercase(self):
+        with self.assertRaises(forms.ValidationError):
+            validate_password_strength('clave1234!!segura')
+
+    @override_settings(ENTORNO='produccion', EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_recuperacion_envia_codigo_por_correo_en_produccion(self):
+        self.personal_admin = Personal.objects.create(
+            nombres='Admin', apellidos='Test', cedula='50000002'
+        )
+        user = Usuario.objects.create_user(
+            usuario='recuperar_correo',
+            password='Clave1234!!Segura',
+            personal=self.personal_admin,
+            cedula='50000002',
+            correo='usuario@test.com',
+            rol='USR_PUBLICO'
+        )
+        response = self.client.post(reverse('usuarios:recovery'), {'usuario': user.usuario, 'stage': 'email'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Código de Verificación')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Recuperación de Contraseña', mail.outbox[0].subject)
+        self.assertIn('código', mail.outbox[0].body.lower())
+
+    @override_settings(
+        ENTORNO='localhost',
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        DEFAULT_FROM_EMAIL='no-reply@test.com',
+        EMAIL_HOST='smtp.test.com',
+        EMAIL_HOST_USER='user@test.com',
+        EMAIL_HOST_PASSWORD='secret',
+    )
+    def test_recuperacion_usa_email_si_hay_configuracion_smtp(self):
+        self.personal_admin = Personal.objects.create(
+            nombres='Admin', apellidos='Test', cedula='50000003'
+        )
+        user = Usuario.objects.create_user(
+            usuario='recuperar_auto',
+            password='Clave1234!!Segura',
+            personal=self.personal_admin,
+            cedula='50000003',
+            correo='auto@test.com',
+            rol='USR_PUBLICO'
+        )
+        response = self.client.post(reverse('usuarios:recovery'), {'usuario': user.usuario, 'stage': 'email'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Código de Verificación')
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_creacion_form_valido(self):
         self.client.login(usuario='admin', password='Clave1234!!Segura')

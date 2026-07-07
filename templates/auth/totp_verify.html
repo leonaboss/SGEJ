@@ -7,14 +7,27 @@
             <div class="mb-3">
                 <span class="badge bg-dark p-3 rounded-circle"><i class="bi bi-shield-lock-fill fs-3 text-white"></i></span>
             </div>
-            <h5 class="fw-bold">Autenticación de Dos Factores</h5>
-            <p class="text-muted small">Ingrese el código generado por su aplicación de autenticación.</p>
+            <h5 class="fw-bold">{{ action_label|default:"Autenticación de Dos Factores" }}</h5>
+            <p class="text-muted small">
+                {% if user.is_2fa_enabled %}
+                Ingrese el código generado por su aplicación de autenticación.
+                {% else %}
+                Ingrese su frase de seguridad para confirmar esta acción.
+                {% endif %}
+            </p>
             <form method="post">
                 {% csrf_token %}
                 <div class="mb-3">
+                    {% if user.is_2fa_enabled %}
                     <input type="text" name="token" class="form-control form-control-lg text-center"
                            placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
                            pattern="[0-9]{6}" required>
+                    {% else %}
+                    <div class="input-group">
+                        <input type="password" name="frase_seguridad" id="frase_seguridad" class="form-control form-control-lg text-center"
+                               placeholder="Frase de seguridad" required>
+                    </div>
+                    {% endif %}
                 </div>
                 <button type="submit" class="btn btn-dark w-100">Verificar</button>
             </form>

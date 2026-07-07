@@ -42,9 +42,9 @@ class ExpedienteAdmin(admin.ModelAdmin):
 
 @admin.register(Actuacion)
 class ActuacionAdmin(admin.ModelAdmin):
-    list_display = ['expediente', 'usuario', 'created_at']
+    list_display = ['content_object', 'usuario', 'created_at']
     list_filter = ['created_at']
-    search_fields = ['expediente__numero_expediente', 'descripcion']
+    search_fields = ['descripcion']
 
 @admin.register(AudienciaAgenda)
 class AudienciaAgendaAdmin(admin.ModelAdmin):

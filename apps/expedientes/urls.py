@@ -14,6 +14,8 @@ urlpatterns = [
     path('expediente/eliminar/<int:pk>/', views.ExpedienteDeleteView.as_view(), name='expediente_delete'),
     path('expediente/<int:pk>/archivar/', views.ExpedienteArchivarView.as_view(), name='expediente_archivar'),
     path('expediente/<int:pk>/desarchivar/', views.ExpedienteDesarchivarView.as_view(), name='expediente_desarchivar'),
+    path('archivados/', views.ExpedienteArchivadosListView.as_view(), name='archivados_list'),
+    path('archivados/<str:tipo_modulo>/', views.ExpedienteArchivadosListView.as_view(), name='archivados_list_module'),
 
     path('actuaciones/', views.ActuacionListView.as_view(), name='actuacion_list'),
     path('actuaciones/editar/<int:pk>/', views.ActuacionUpdateView.as_view(), name='actuacion_update'),
