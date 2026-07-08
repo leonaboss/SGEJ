@@ -63,7 +63,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
 class DashboardCountsAPIView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
-        activos = Expediente.objects.filter(is_archivado=False, deleted_at__isnull=True)
+        activos = Expediente.objects.for_user(request.user).filter(is_archivado=False, deleted_at__isnull=True)
         counts = {
             'despido': activos.filter(tipo_modulo='DESP').count(),
             'inspectoria': activos.filter(tipo_modulo='INSP').count(),
@@ -72,7 +72,7 @@ class DashboardCountsAPIView(LoginRequiredMixin, View):
             'litigios': activos.filter(tipo_modulo='LITI').count(),
             'sustanciacion': activos.filter(tipo_modulo='SUST').count(),
             'indices': activos.filter(tipo_modulo='IND').count(),
-            'actuaciones': Actuacion.objects.filter(deleted_at__isnull=True).count(),
+            'actuaciones': Actuacion.objects.for_user(request.user).filter(deleted_at__isnull=True).count(),
         }
         return JsonResponse(counts)
 

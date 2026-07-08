@@ -21,6 +21,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class BitacoraViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = BitacoraAuditoria.objects.all()
     serializer_class = BitacoraAuditoriaSerializer
+    permission_classes = [permissions.IsAdminUser]
     ordering = ['-created_at']
 
 

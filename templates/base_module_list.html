@@ -27,16 +27,26 @@
                 </select>
                 {% endif %}
                 <button class="btn btn-dark btn-sm" type="submit"><i class="bi bi-funnel me-1"></i>Filtrar</button>
-                <a href="{% url 'expedientes:modulo_list' tipo_modulo=tipo_modulo %}" class="btn btn-outline-danger btn-sm" title="Quitar todos los filtros aplicados"><i class="bi bi-eraser me-1"></i>Quitar filtros</a>
             </form>
             <a href="{% url 'expedientes:expediente_create' %}?tipo_modulo={{ tipo_modulo }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo</a>
-            <form method="post" action="{% url 'expedientes:importar_excel' 'Expediente' %}" enctype="multipart/form-data" class="d-inline">
-                {% csrf_token %}
-                <label class="btn btn-outline-warning btn-sm mb-0"><i class="bi bi-upload me-1"></i>Importar
-                    <input type="file" name="archivo" accept=".xlsx,.xls" hidden onchange="this.form.submit()">
-                </label>
-            </form>
-            <a href="{% url 'expedientes:exportar_expedientes' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i>Exportar</a>
+            <div class="dropdown d-inline-block">
+                <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                </button>
+                <ul class="dropdown-menu shadow-sm">
+                    <li>
+                        <form method="post" action="{% url 'expedientes:importar_excel' 'Expediente' %}" enctype="multipart/form-data" class="m-0 px-3 py-1">
+                            {% csrf_token %}
+                            <label class="dropdown-item p-0 m-0 text-dark" style="cursor: pointer;"><i class="bi bi-upload me-2 text-warning"></i>Importar
+                                <input type="file" name="archivo" accept=".xlsx,.xls" hidden onchange="this.form.submit()">
+                            </label>
+                        </form>
+                    </li>
+                    <li>
+                        <a class="dropdown-item text-dark" href="{% url 'expedientes:exportar_expedientes' %}"><i class="bi bi-download me-2 text-success"></i>Exportar</a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
     <div class="table-responsive">

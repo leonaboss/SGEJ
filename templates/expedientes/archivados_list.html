@@ -25,12 +25,12 @@
             <thead class="table-light">
                 <tr>
                     <th>N° Expediente</th>
-                    <th>Módulo</th>
-                    <th>Nombre y Apellido</th>
-                    <th>Cédula</th>
-                    <th>Motivo</th>
+                    <th>Módulo Origen</th>
+                    <th>Usuario Responsable</th>
+                    <th>Sujeto Vinculado</th>
+                    <th>Fecha de Archivo</th>
                     <th>Estatus</th>
-                    <th class="text-center" style="width: 70px;">Acciones</th>
+                    <th class="text-center" style="width: 100px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -38,12 +38,21 @@
                 <tr>
                     <td><span class="fw-semibold">{{ exp.numero_expediente }}</span></td>
                     <td><span class="badge bg-light text-dark border">{{ exp.get_tipo_modulo_display }}</span></td>
-                    <td>{{ exp.personal.get_full_name|default:"-" }}</td>
-                    <td>{{ exp.personal.cedula|default:"-" }}</td>
-                    <td>{{ exp.motivo.descripcion|default:"-"|truncatechars:50 }}</td>
+                    <td><i class="bi bi-person-circle me-1 text-muted"></i>{{ exp.usuario.get_full_name|default:"Sistema" }}</td>
+                    <td>
+                        {{ exp.personal.get_full_name|default:"-" }}<br>
+                        <small class="text-muted">C.I: {{ exp.personal.cedula|default:"-" }}</small>
+                    </td>
+                    <td><i class="bi bi-calendar-event me-1 text-muted"></i>{{ exp.updated_at|date:"d/m/Y" }}</td>
                     <td>{% include 'components/estatus_badge.html' with estatus=exp.estatus %}</td>
                     <td class="text-center">
-                        <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                        <div class="d-flex justify-content-center gap-1">
+                            <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                            <form method="post" action="{% url 'expedientes:expediente_desarchivar' exp.pk %}" class="d-inline" onsubmit="return confirm('¿Está seguro de desarchivar este expediente y devolverlo a estado activo?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Desarchivar / Restaurar"><i class="bi bi-arrow-counterclockwise"></i></button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

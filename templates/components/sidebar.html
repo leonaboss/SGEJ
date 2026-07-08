@@ -23,95 +23,151 @@
             </a>
         </li>
         
-        <div class="sidebar-section-label">Módulos Operativos</div>
-        
-        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="DESP" icon="bi bi-person-x-fill" label="Calificación de Despido" active_module="modulo/DESP" required_roles="ADMIN,ABOG" %}
-        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="INSP" icon="bi bi-briefcase-fill" label="Inspectoría del Trabajo" active_module="modulo/INSP" required_roles="ADMIN,ABOG" %}
-        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="OFIC" icon="bi bi-folder-fill" label="Oficina Jurídica" active_module="modulo/OFIC" required_roles="ADMIN,ABOG" %}
-        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="CONT" icon="bi bi-journal-text" label="Convenios UPTAG" active_module="modulo/CONT" required_roles="ADMIN,ABOG" %}
-        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="LITI" icon="bi bi-bank" label="Litigios" active_module="modulo/LITI" required_roles="ADMIN,ABOG" %}
-        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="SUST" icon="bi bi-shield-exclamation" label="Sustanciación" active_module="modulo/SUST" required_roles="ADMIN,ABOG" %}
-        {% sidebar_item url="expedientes:modulo_list" tipo_modulo="IND" icon="bi bi-list-check" label="Índices Inspectoría" active_module="modulo/IND" required_roles="ADMIN,ABOG" %}
-        
-        {% sidebar_item url="expedientes:calendario_lapsos" icon="bi bi-calendar-range" label="Lapsos y Agenda Procesal" active_module="calendario" required_roles="ADMIN,ABOG" %}
-        
-        <div class="sidebar-section-label">Documentos y Consultas</div>
+        <!-- Grupo Colapsable: Expedientes -->
         <li class="sidebar-nav-item">
-            <a href="{% url 'documentos:documento_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'documento_list' %}active{% endif %}">
-                <i class="bi bi-file-earmark-pdf"></i>
-                <span>Documentos</span>
+            <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'modulo_list,calendario_lapsos' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseExpedientes" role="button" aria-expanded="{% if request.resolver_match.url_name in 'modulo_list,calendario_lapsos' %}true{% else %}false{% endif %}" aria-controls="collapseExpedientes">
+                <i class="bi bi-grid-fill me-2"></i>
+                <span>Expedientes</span>
+                <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem;"></i>
             </a>
-        </li>
-        <li class="sidebar-nav-item">
-            <a href="{% url 'biblioteca:lista' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'lista' %}active{% endif %}">
-                <i class="bi bi-book-half"></i>
-                <span>Biblioteca Normativa</span>
-            </a>
+            <div class="collapse {% if request.resolver_match.url_name in 'modulo_list,calendario_lapsos' %}show{% endif %}" id="collapseExpedientes">
+                <ul class="list-unstyled pb-1 ps-3 mb-0">
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="DESP" icon="bi bi-person-x-fill" label="Calificación de Despido" active_module="modulo/DESP" required_roles="ADMIN,ABOG" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="INSP" icon="bi bi-briefcase-fill" label="Inspectoría del Trabajo" active_module="modulo/INSP" required_roles="ADMIN,ABOG" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="OFIC" icon="bi bi-folder-fill" label="Oficina Jurídica" active_module="modulo/OFIC" required_roles="ADMIN,ABOG" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="CONT" icon="bi bi-journal-text" label="Convenios UPTAG" active_module="modulo/CONT" required_roles="ADMIN,ABOG" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="LITI" icon="bi bi-bank" label="Litigios" active_module="modulo/LITI" required_roles="ADMIN,ABOG" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="SUST" icon="bi bi-shield-exclamation" label="Sustanciación" active_module="modulo/SUST" required_roles="ADMIN,ABOG" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="IND" icon="bi bi-list-check" label="Índices Inspectoría" active_module="modulo/IND" required_roles="ADMIN,ABOG" %}
+                    {% sidebar_item url="expedientes:calendario_lapsos" icon="bi bi-calendar-range" label="Lapsos y Agenda Procesal" active_module="calendario" required_roles="ADMIN,ABOG" %}
+                </ul>
+            </div>
         </li>
         
-        <!-- Zona Administrativa (Solo ADMIN y ABOG) -->
-        {% if request.user|has_role:'ADMIN,ABOG' %}
-        <hr class="sidebar-divider">
-        <div class="sidebar-section-label">Administración</div>
+        <!-- Grupo Colapsable: Documentos y Consultas -->
         <li class="sidebar-nav-item">
-            <a href="{% url 'usuarios:usuario_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'usuario_list' %}active{% endif %}">
-                <i class="bi bi-people-fill"></i>
-                <span>Usuarios</span>
+            <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'documento_list,lista' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseDocumentos" role="button" aria-expanded="{% if request.resolver_match.url_name in 'documento_list,lista' %}true{% else %}false{% endif %}" aria-controls="collapseDocumentos">
+                <i class="bi bi-file-earmark-pdf me-2"></i>
+                <span>Documentos y Consultas</span>
+                <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem;"></i>
             </a>
+            <div class="collapse {% if request.resolver_match.url_name in 'documento_list,lista' %}show{% endif %}" id="collapseDocumentos">
+                <ul class="list-unstyled pb-1 ps-3 mb-0">
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'documentos:documento_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'documento_list' %}active{% endif %}">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            <span>Documentos</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'biblioteca:lista' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'lista' %}active{% endif %}">
+                            <i class="bi bi-book-half me-2"></i>
+                            <span>Biblioteca Normativa</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </li>
+        
+        <!-- Administración (Solo ADMIN) -->
         {% if request.user|has_role:'ADMIN' %}
+        <hr class="sidebar-divider">
+        
+        <!-- Grupo Colapsable: Administración -->
         <li class="sidebar-nav-item">
-            <a href="{% url 'usuarios:bitacora_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'bitacora_list' %}active{% endif %}">
-                <i class="bi bi-journal-code"></i>
-                <span>Bitácora de Auditoría</span>
+            <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'usuario_list,bitacora_list' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseAdmin" role="button" aria-expanded="{% if request.resolver_match.url_name in 'usuario_list,bitacora_list' %}true{% else %}false{% endif %}" aria-controls="collapseAdmin">
+                <i class="bi bi-gear-fill me-2"></i>
+                <span>Administración</span>
+                <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem;"></i>
             </a>
+            <div class="collapse {% if request.resolver_match.url_name in 'usuario_list,bitacora_list' %}show{% endif %}" id="collapseAdmin">
+                <ul class="list-unstyled pb-1 ps-3 mb-0">
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'usuarios:usuario_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'usuario_list' %}active{% endif %}">
+                            <i class="bi bi-people-fill me-2"></i>
+                            <span>Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'usuarios:bitacora_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'bitacora_list' %}active{% endif %}">
+                            <i class="bi bi-journal-code me-2"></i>
+                            <span>Bitácora de Auditoría</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </li>
         {% endif %}
-        <div class="sidebar-section-label">Catálogos</div>
+
+        <hr class="sidebar-divider">
+
+        <!-- Grupo Colapsable: Catálogos -->
         <li class="sidebar-nav-item">
-            <a href="{% url 'expedientes:personal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'personal_list' %}active{% endif %}">
-                <i class="bi bi-person-badge"></i>
-                <span>Personal</span>
+            <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'personal_list,cargo_list,motivo_list,tribunal_list,sujetoprocesal_list' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseCatalogos" role="button" aria-expanded="{% if request.resolver_match.url_name in 'personal_list,cargo_list,motivo_list,tribunal_list,sujetoprocesal_list' %}true{% else %}false{% endif %}" aria-controls="collapseCatalogos">
+                <i class="bi bi-card-list me-2"></i>
+                <span>Catálogos</span>
+                <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem;"></i>
             </a>
+            <div class="collapse {% if request.resolver_match.url_name in 'personal_list,cargo_list,motivo_list,tribunal_list,sujetoprocesal_list' %}show{% endif %}" id="collapseCatalogos">
+                <ul class="list-unstyled pb-1 ps-3 mb-0">
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'expedientes:personal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'personal_list' %}active{% endif %}">
+                            <i class="bi bi-person-badge me-2"></i>
+                            <span>Personal</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'expedientes:cargo_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'cargo_list' %}active{% endif %}">
+                            <i class="bi bi-briefcase me-2"></i>
+                            <span>Cargos</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'expedientes:motivo_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'motivo_list' %}active{% endif %}">
+                            <i class="bi bi-list-ul me-2"></i>
+                            <span>Motivos</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'expedientes:tribunal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'tribunal_list' %}active{% endif %}">
+                            <i class="bi bi-bank me-2"></i>
+                            <span>Tribunales</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'expedientes:sujetoprocesal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'sujetoprocesal_list' %}active{% endif %}">
+                            <i class="bi bi-people me-2"></i>
+                            <span>Sujetos Procesales</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </li>
+
+        <!-- Grupo Colapsable: Registro de Actividad -->
         <li class="sidebar-nav-item">
-            <a href="{% url 'expedientes:cargo_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'cargo_list' %}active{% endif %}">
-                <i class="bi bi-briefcase"></i>
-                <span>Cargos</span>
+            <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'archivados_list,actuacion_list' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseRegistro" role="button" aria-expanded="{% if request.resolver_match.url_name in 'archivados_list,actuacion_list' %}true{% else %}false{% endif %}" aria-controls="collapseRegistro">
+                <i class="bi bi-archive-fill me-2"></i>
+                <span>Registro de Actividad</span>
+                <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem;"></i>
             </a>
+            <div class="collapse {% if request.resolver_match.url_name in 'archivados_list,actuacion_list' %}show{% endif %}" id="collapseRegistro">
+                <ul class="list-unstyled pb-1 ps-3 mb-0">
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'expedientes:archivados_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'archivados_list' %}active{% endif %}">
+                            <i class="bi bi-archive me-2"></i>
+                            <span>Expedientes Archivados</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'expedientes:actuacion_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'actuacion_list' %}active{% endif %}">
+                            <i class="bi bi-journal-text me-2"></i>
+                            <span>Actuaciones</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </li>
-        <li class="sidebar-nav-item">
-            <a href="{% url 'expedientes:motivo_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'motivo_list' %}active{% endif %}">
-                <i class="bi bi-list-ul"></i>
-                <span>Motivos</span>
-            </a>
-        </li>
-        <li class="sidebar-nav-item">
-            <a href="{% url 'expedientes:tribunal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'tribunal_list' %}active{% endif %}">
-                <i class="bi bi-bank"></i>
-                <span>Tribunales</span>
-            </a>
-        </li>
-            <li class="sidebar-nav-item">
-                <a href="{% url 'expedientes:sujetoprocesal_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'sujetoprocesal_list' %}active{% endif %}">
-                    <i class="bi bi-people"></i>
-                    <span>Sujetos Procesales</span>
-                </a>
-            </li>
-            <div class="sidebar-section-label">Registro de Actividad</div>
-        <li class="sidebar-nav-item">
-            <a href="{% url 'expedientes:archivados_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'archivados_list' %}active{% endif %}">
-                <i class="bi bi-archive"></i>
-                <span>Expedientes Archivados</span>
-            </a>
-        </li>
-        <li class="sidebar-nav-item">
-            <a href="{% url 'expedientes:actuacion_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'actuacion_list' %}active{% endif %}">
-                <i class="bi bi-journal-text"></i>
-                <span>Actuaciones</span>
-            </a>
-        </li>
-        {% endif %}
     </ul>
     
     <!-- Footer Sidebar -->
