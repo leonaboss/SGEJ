@@ -7,6 +7,7 @@ from django.views import View
 from django.views.generic import ListView, DetailView
 from django.contrib import messages
 from django.http import FileResponse, HttpResponse
+from django.db.models import Q
 from .models import Documento, PlantillaDocumento
 from .forms import DocumentoUploadForm, PlantillaForm
 from apps.documentos.services import DocumentoSecurizadoService, PlantillaService
@@ -24,7 +25,8 @@ class DocumentoListView(LoginRequiredMixin, ListView):
         )
         q = self.request.GET.get('q', '').strip()
         if q:
-            qs = qs.filter(nombre_original__icontains=q)
+            # Uso de Full-Text Search profesional (vía Manager)
+            qs = qs.fulltext_search(q)
         tipo = self.request.GET.get('tipo', '').strip()
         if tipo == 'plantillas':
             qs = qs.filter(es_plantilla=True)
@@ -59,6 +61,15 @@ class DocumentoUploadView(LoginRequiredMixin, View):
                 expediente_obj=expediente,
                 usuario_creador=request.user
             )
+
+            # Crear primera versión
+            DocumentVersioningService.crear_version(
+                documento=doc,
+                archivo_cifrado_path=doc.nombre_cifrado,
+                autor=request.user,
+                mensaje_commit="Carga inicial"
+            )
+
             if tipo == 'PLANTILLA':
                 doc.es_plantilla = True
                 doc.save(update_fields=['es_plantilla'])

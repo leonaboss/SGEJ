@@ -20,9 +20,36 @@
                         <tr><th>Es Plantilla</th><td>{% if documento.es_plantilla %}<i class="bi bi-check-circle-fill text-success"></i> Sí{% else %}No{% endif %}</td></tr>
                         <tr><th>Hash SHA-256</th><td><code class="small">{{ documento.hash_sha256 }}</code></td></tr>
                         <tr><th>QR Content</th><td><code class="small">{{ documento.qr_code_content|default:"-" }}</code></td></tr>
+                        {% if documento.contenido_ocr %}
+                        <tr><th>Contenido OCR</th><td><div class="p-2 bg-light border rounded small" style="max-height: 200px; overflow-y: auto;"><pre>{{ documento.contenido_ocr }}</pre></div></td></tr>
+                        {% endif %}
                         <tr><th>Subido por</th><td>{{ documento.created_by.get_full_name }}</td></tr>
                         <tr><th>Fecha</th><td>{{ documento.created_at|date:"d/m/Y H:i" }}</td></tr>
                     </table>
+
+                    <h6 class="mt-4">Historial de Versiones</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped small">
+                            <thead>
+                                <tr>
+                                    <th>Versión</th>
+                                    <th>Fecha</th>
+                                    <th>Autor</th>
+                                    <th>Mensaje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for version in documento.versiones.all %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ version.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ version.autor.get_full_name }}</td>
+                                    <td>{{ version.mensaje_commit }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="card-footer">
                     <a href="{% url 'documentos:documento_list' %}" class="btn btn-outline-secondary">

@@ -11,8 +11,38 @@ from django.utils import timezone
 from docx import Document as DocxDocument
 from apps.documentos.models import Documento
 import qrcode
+import pytesseract
+from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+
+class OCRService:
+
+    @staticmethod
+    def extraer_texto(contenido_binario):
+        try:
+            imagen = Image.open(BytesIO(contenido_binario))
+            # Requiere Tesseract OCR instalado en el sistema
+            texto = pytesseract.image_to_string(imagen)
+            return texto
+        except Exception as e:
+            logger.warning("Error OCR: %s. Asegúrese de que Tesseract está instalado.", e)
+            return ""
+
+
+class DocumentVersioningService:
+
+    @staticmethod
+    def crear_version(documento, archivo_cifrado_path, autor, mensaje_commit="Versión inicial"):
+        from apps.documentos.models import DocumentoVersion
+        return DocumentoVersion.objects.create(
+            documento=documento,
+            archivo_cifrado_path=archivo_cifrado_path,
+            autor=autor,
+            mensaje_commit=mensaje_commit,
+            hash_sha256=documento.hash_sha256
+        )
 
 
 class DocumentoSecurizadoService:
@@ -80,6 +110,7 @@ class DocumentoSecurizadoService:
             hash_sha256=hash_sha256,
             iv_cifrado=encrypted_key_b64,
             qr_code_content=qr_data,
+            contenido_ocr=OCRService.extraer_texto(contenido_binario) if archivo_plano.content_type.startswith('image/') else None,
             version=1,
             created_by=usuario_creador
         )

@@ -3,10 +3,21 @@ App: documentos
 Modelos para gestión de archivos cifrados, firmas y QRs.
 """
 from django.db import models
+from django.db.models.expressions import RawSQL
+
+
+class DocumentoManager(models.Manager):
+    def fulltext_search(self, query):
+        sql = "MATCH(nombre_original, contenido_ocr) AGAINST(%s IN BOOLEAN MODE)"
+        return self.filter(RawSQL(sql, [query])).annotate(
+            relevance=RawSQL(sql, [query])
+        ).order_by('-relevance')
 
 
 class Documento(models.Model):
     """Documento cifrado at-rest con hash SHA-256 de integridad."""
+    objects = DocumentoManager()
+    
     expediente = models.ForeignKey(
         'expedientes.Expediente', on_delete=models.PROTECT,
         blank=True, null=True, db_column='expediente_id'
@@ -45,6 +56,27 @@ class Documento(models.Model):
 
     def __str__(self):
         return self.nombre_original
+
+
+class DocumentoVersion(models.Model):
+    """Historial inmutable de versiones de un documento."""
+    documento = models.ForeignKey(
+        'Documento', on_delete=models.CASCADE, related_name='versiones'
+    )
+    archivo_cifrado_path = models.CharField(max_length=255)
+    autor = models.ForeignKey(
+        'usuarios.Usuario', on_delete=models.PROTECT, db_column='autor_id'
+    )
+    mensaje_commit = models.CharField(max_length=255, blank=True)
+    hash_sha256 = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'documento_versiones'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"V{self.id} - {self.documento.nombre_original}"
 
 
 class DocumentoFirma(models.Model):
