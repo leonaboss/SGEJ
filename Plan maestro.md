@@ -733,9 +733,3 @@ El IDE Google Antigravity debe leer este documento de contexto y proceder con la
 
 5. Regla de Cumplimiento de Calidad: Validar que cada endpoint verifique de forma estricta los permisos del usuario activo mediante decoradores o mixins basados en la tabla de Roles (RBAC), bloqueando de forma absoluta cualquier acceso no explícitamente parametrizado.
 
-with open("Plan maestro.md", "w", encoding="utf-8") as f:
-f.write(markdown_content.strip())
-
-print("SUCCESS")
-
-"Actúa como un Desarrollador Backend Senior. Lee y analiza detalladamente este plan maestro de arquitectura. Procede a inicializar el proyecto Django creando la estructura de carpetas modular, configurando el archivo .env con las credenciales de MySQL proporcionadas, e implementando primero los modelos de usuarios y expedientes respetando estrictamente las restricciones de integridad y seguridad descritas. No omitas ninguna columna ni requerimiento de la matriz de validación."
