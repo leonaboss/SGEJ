@@ -20,7 +20,6 @@ Monolito modular Django 5.2 + DRF + MySQL 8.0 + Bootstrap 5.
 | `sgej_config/` | ✅ Completo | Settings, urls, wsgi, asgi listos. |
 | `templates/` | ✅ Completo | 44 templates. Creados errors/404.html y errors/500.html. |
 | `static/` | ✅ Completo | CSS (803 líneas), JS (3 módulos), imágenes. |
-| `scripts/backup.py` | ✅ Completo | Export SQL + Excel. |
 
 ## Tareas Completadas
 
