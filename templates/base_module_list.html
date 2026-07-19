@@ -62,7 +62,16 @@
                 <tr>
                     {% block table_cells %}{% endblock %}
                     <td class="text-center">
-                        <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'expedientes:expediente_update' exp.pk %}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
+                            {% if not exp.is_archivado %}
+                            <form method="post" action="{% url 'expedientes:expediente_archivar' exp.pk %}" onsubmit="return confirm('¿Está seguro de archivar este expediente?');" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Archivar"><i class="bi bi-archive"></i></button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

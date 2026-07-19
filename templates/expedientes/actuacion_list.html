@@ -23,11 +23,19 @@
                     {% for a in actuaciones %}
                     <tr>
                         <td class="text-nowrap">{{ a.created_at|date:"d/m/Y H:i" }}</td>
-                        <td><a href="{% url 'expedientes:expediente_detail' a.expediente.pk %}">{{ a.expediente.numero_expediente }}</a></td>
+                        <td>
+                            {% if a.content_type.model == 'expediente' and a.object_id %}
+                                <a href="{% url 'expedientes:expediente_detail' a.object_id %}">{{ a.content_object.numero_expediente }}</a>
+                            {% else %}
+                                <span class="text-muted">General</span>
+                            {% endif %}
+                        </td>
                         <td>{{ a.descripcion|truncatechars:120 }}</td>
                         <td>{{ a.usuario.get_full_name }}</td>
                         <td>
-                            <a href="{% url 'expedientes:expediente_detail' a.expediente.pk %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-eye"></i></a>
+                            {% if a.content_type.model == 'expediente' and a.object_id %}
+                                <span class="text-muted small">No disponible</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No hay actuaciones registradas.</td></tr>

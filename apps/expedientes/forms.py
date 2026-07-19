@@ -1,5 +1,7 @@
 import hashlib
+import re
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import (
     Personal, Cargo, PersonaCargo, Motivo, Tribunal, Expediente,
@@ -9,18 +11,45 @@ from .models import (
 from apps.usuarios.models import Usuario
 
 
-def clean_personal_text(value):
+# Validaciones internas para mantener forms.py autónomo
+def validate_text_only(value):
+    """Solo letras y espacios."""
+    if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', value.strip()):
+        raise ValidationError('El campo solo debe contener letras y espacios.')
+
+def validate_alphanumeric_text(value):
+    """Letras, números, espacios y signos básicos."""
+    if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\.\,\-]+$', value.strip()):
+        raise ValidationError('El campo contiene caracteres no permitidos.')
+
+
+def clean_personal_text(value, cedula=None):
     """Resuelve texto 'nombres apellidos' en un objeto Personal (get_or_create)."""
     partes = value.strip().split(None, 1)
     if len(partes) < 2:
         raise forms.ValidationError('Ingrese nombres y apellidos separados por espacio.')
     nombres = partes[0]
     apellidos = partes[1]
-    qs = Personal.objects.filter(
-        nombres=nombres, apellidos=apellidos, deleted_at__isnull=True
-    )
-    if qs.exists():
-        return qs.first()
+    
+    # 1. Buscar por nombre
+    personal = Personal.objects.filter(nombres=nombres, apellidos=apellidos, deleted_at__isnull=True).first()
+    
+    # Si existe, verificar si debemos actualizar su cédula
+    if personal:
+        if cedula and (personal.cedula.startswith('TMP-') or not personal.cedula):
+            personal.cedula = cedula
+            personal.save(update_fields=['cedula'])
+        return personal
+    
+    # 2. Buscar por cédula si fue provista
+    if cedula:
+        personal = Personal.objects.filter(cedula=cedula, deleted_at__isnull=True).first()
+        if personal:
+            return personal
+        # Crear con la cédula provista
+        return Personal.objects.create(cedula=cedula, nombres=nombres, apellidos=apellidos)
+
+    # 3. Fallback a cédula temporal
     raw = f"{value}|{timezone.now().isoformat()}"
     cedula_tmp = f"TMP-{hashlib.md5(raw.encode()).hexdigest()[:8].upper()}"
     return Personal.objects.create(cedula=cedula_tmp, nombres=nombres, apellidos=apellidos)
@@ -34,6 +63,16 @@ class PersonalForm(forms.ModelForm):
             'direccion': forms.Textarea(attrs={'rows': 3}),
         }
 
+    def clean_nombres(self):
+        value = self.cleaned_data.get('nombres')
+        validate_text_only(value)
+        return value
+
+    def clean_apellidos(self):
+        value = self.cleaned_data.get('apellidos')
+        validate_text_only(value)
+        return value
+
 
 class CargoForm(forms.ModelForm):
     class Meta:
@@ -42,6 +81,12 @@ class CargoForm(forms.ModelForm):
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def clean_descripcion(self):
+        value = self.cleaned_data.get('descripcion')
+        if value:
+            validate_alphanumeric_text(value)
+        return value
 
 
 class MotivoForm(forms.ModelForm):
@@ -52,14 +97,27 @@ class MotivoForm(forms.ModelForm):
             'descripcion': forms.Textarea(attrs={'rows': 3}),
         }
 
+    def clean_descripcion(self):
+        value = self.cleaned_data.get('descripcion')
+        if value:
+            validate_alphanumeric_text(value)
+        return value
+
 
 class TribunalForm(forms.ModelForm):
     class Meta:
         model = Tribunal
         exclude = ['deleted_at']
 
+    def clean_nombre(self):
+        value = self.cleaned_data.get('nombre')
+        if value:
+            validate_alphanumeric_text(value)
+        return value
+
 
 class ExpedienteForm(forms.ModelForm):
+    # Redefinir solo campos especiales que no sean de relación simple
     tribunal_tipo = forms.ChoiceField(
         choices=Tribunal.TipoTribunalChoices.choices,
         label='Tipo de Tribunal',
@@ -82,55 +140,59 @@ class ExpedienteForm(forms.ModelForm):
             'fecha_registro': forms.DateInput(attrs={'type': 'date'}),
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}),
         }
-        help_texts = {
-            'numero_expediente': 'Ingrese el número único del expediente.',
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        cedula = self.fields['cedula']
-        cedula.widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'})
-        cedula.label = 'Cédula'
-        cedula.help_text = 'Formato: V- seguido solo de números (ej: V-12345678).'
+        # Cédula (campo normal, se mantiene TextInput)
+        self.fields['cedula'].widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'})
+        self.fields['cedula'].label = 'Cédula'
+        self.fields['cedula'].help_text = 'Formato: V- seguido solo de números (ej: V-12345678).'
 
-        personal = self.fields['personal']
-        personal.widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombres Apellidos'})
-        personal.label = 'Nombres y Apellidos de la Persona'
-        personal.help_text = 'Escriba los nombres y apellidos. Si no existe se creará automáticamente.'
-        if self.instance and self.instance.pk and self.instance.personal_id:
-            personal.initial = self.instance.personal.get_full_name()
+        # --- CAMPOS DE RELACIÓN (Cambiados a CharField para permitir texto libre) ---
+        
+        # Personal
+        self.fields['personal'] = forms.CharField(
+            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombres Apellidos'}),
+            label='Nombres y Apellidos de la Persona',
+            help_text='Escriba los nombres y apellidos. Si no existe se creará automáticamente.',
+            required=True
+        )
+        if self.instance and self.instance.pk and self.instance.personal:
+            self.initial['personal'] = self.instance.personal.get_full_name()
 
-        cargo = self.fields['cargo']
-        cargo.widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Docente, Administrativo, Obrero'})
-        cargo.label = 'Cargo'
-        cargo.help_text = 'Escriba el cargo. Si no existe se creará automáticamente.'
-        cargo.required = False
-        if self.instance and self.instance.pk and self.instance.cargo_id:
-            cargo.initial = str(self.instance.cargo)
+        # Cargo
+        self.fields['cargo'] = forms.CharField(
+            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Docente, Administrativo, Obrero'}),
+            label='Cargo',
+            help_text='Escriba el cargo. Si no existe se creará automáticamente.',
+            required=False
+        )
+        if self.instance and self.instance.pk and self.instance.cargo:
+            self.initial['cargo'] = str(self.instance.cargo)
 
-        motivo = self.fields['motivo']
-        motivo.widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Jubilación, Renuncia, Ingreso'})
-        motivo.label = 'Motivo'
-        motivo.help_text = 'Escriba el motivo. Si no existe se creará automáticamente.'
-        motivo.required = False
-        if self.instance and self.instance.pk and self.instance.motivo_id:
-            motivo.initial = str(self.instance.motivo)
+        # Motivo
+        self.fields['motivo'] = forms.CharField(
+            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Jubilación, Renuncia, Ingreso'}),
+            label='Motivo',
+            help_text='Escriba el motivo. Si no existe se creará automáticamente.',
+            required=False
+        )
+        if self.instance and self.instance.pk and self.instance.motivo:
+            self.initial['motivo'] = str(self.instance.motivo)
 
-        tribunal = self.fields['tribunal']
-        tribunal.widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del tribunal'})
-        tribunal.label = 'Nombre del Tribunal'
-        tribunal.help_text = 'Escriba el nombre del tribunal.'
-        tribunal.required = False
-        if self.instance and self.instance.pk and self.instance.tribunal_id:
-            tribunal.initial = str(self.instance.tribunal)
-            self.initial['tribunal_tipo'] = self.instance.tribunal.tipo
+        # Tribunal
+        self.fields['tribunal'] = forms.CharField(
+            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del tribunal'}),
+            label='Nombre del Tribunal',
+            help_text='Escriba el nombre del tribunal.',
+            required=False
+        )
+        if self.instance and self.instance.pk and self.instance.tribunal:
+            self.initial['tribunal'] = str(self.instance.tribunal)
+        
+        # ----------------------------------------------------------------------------
 
-        tipo_modulo = self.initial.get('tipo_modulo')
-        if self.instance and self.instance.pk:
-            tipo_modulo = self.instance.tipo_modulo
-
-        self._configure_fields_for_module(tipo_modulo)
 
     def _configure_fields_for_module(self, tipo_modulo):
         """Configura visibilidad y widgets según el módulo."""
@@ -139,65 +201,63 @@ class ExpedienteForm(forms.ModelForm):
         sust_fields = ['hora_procedimiento', 'lugar_procedimiento', 'fase_actual', 'cronometro_limite',
                        'firma_digital_hash', 'huella_digital_hash']
 
+        # Campos que siempre deben estar ocultos si no es el módulo correspondiente
+        fields_to_hide = []
+        if tipo_modulo != 'SUST':
+            fields_to_hide.extend(sust_fields)
+        if tipo_modulo != 'LITI':
+            fields_to_hide.extend(litigios_fields)
+        if tipo_modulo != 'CONT':
+            fields_to_hide.extend(convenios_fields)
+            
+        for f in set(fields_to_hide):
+            self.fields.pop(f, None)
+
+        # Configuración específica para SUST (campos visibles pero de solo lectura)
         if tipo_modulo == 'SUST':
-            for f in convenios_fields + litigios_fields:
-                self.fields.pop(f, None)
+            firma = self.fields.get('firma_digital_hash')
+            if firma:
+                firma.widget = forms.TextInput(attrs={
+                    'class': 'form-control font-monospace',
+                    'placeholder': 'Se genera automáticamente al guardar',
+                    'readonly': True,
+                })
+                firma.label = 'Firma Digital (SHA-256)'
+                firma.required = False
 
-            firma = self.fields['firma_digital_hash']
-            firma.widget = forms.TextInput(attrs={
-                'class': 'form-control font-monospace',
-                'placeholder': 'Se genera automáticamente al guardar',
-                'readonly': True,
-            })
-            firma.label = 'Firma Digital (SHA-256)'
-            firma.help_text = 'Hash SHA-256 generado automáticamente.'
-            firma.required = False
-
-            huella = self.fields['huella_digital_hash']
-            huella.widget = forms.TextInput(attrs={
-                'class': 'form-control font-monospace',
-                'placeholder': 'Se genera automáticamente al guardar',
-                'readonly': True,
-            })
-            huella.label = 'Huella Digital (SHA-256)'
-            huella.help_text = 'Hash SHA-256 generado automáticamente.'
-            huella.required = False
-
-        elif tipo_modulo == 'LITI':
-            for f in convenios_fields + sust_fields:
-                self.fields.pop(f, None)
-
-            tipo_demanda = self.fields['tipo_demanda']
-            tipo_demanda.widget = forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Ej: Cobro de Bolívares, Daños y Perjuicios, etc.'
-            })
-            tipo_demanda.label = 'Tipo de Demanda'
-            tipo_demanda.required = True
-
-            fecha_demanda = self.fields['fecha_demanda']
-            fecha_demanda.widget = forms.DateInput(attrs={
-                'type': 'date', 'class': 'form-control'
-            })
-            fecha_demanda.label = 'Fecha de Demanda'
-            fecha_demanda.required = True
-
-        elif tipo_modulo == 'CONT':
-            for f in litigios_fields + sust_fields:
-                self.fields.pop(f, None)
-
-        else:
-            # DESP u otros: mostrar solo campos generales
-            for f in convenios_fields + litigios_fields + sust_fields:
-                self.fields.pop(f, None)
+            huella = self.fields.get('huella_digital_hash')
+            if huella:
+                huella.widget = forms.TextInput(attrs={
+                    'class': 'form-control font-monospace',
+                    'placeholder': 'Se genera automáticamente al guardar',
+                    'readonly': True,
+                })
+                huella.label = 'Huella Digital (SHA-256)'
+                huella.required = False
 
     def clean_personal(self):
-        return clean_personal_text(self.cleaned_data['personal'])
+        value = self.cleaned_data.get('personal')
+        # Intentar obtener cedula de cleaned_data o fallback a raw data para asegurar valor
+        cedula = self.cleaned_data.get('cedula') or self.data.get('cedula')
+        
+        if not value:
+            raise forms.ValidationError('El campo personal es obligatorio.')
+        
+        # Validar si el valor es solo números
+        if value.isdigit():
+             raise forms.ValidationError('Debe ingresar el nombre y apellido, no solo números.')
+
+        validate_text_only(value)
+            
+        return clean_personal_text(value, cedula=cedula)
 
     def clean_cargo(self):
         value = self.cleaned_data.get('cargo')
         if not value:
             return None
+        
+        validate_alphanumeric_text(value)
+            
         value = value.strip()
         cargo, _ = Cargo.objects.get_or_create(
             descripcion=value,
@@ -213,6 +273,9 @@ class ExpedienteForm(forms.ModelForm):
         value = self.cleaned_data.get('motivo')
         if not value:
             return None
+            
+        validate_alphanumeric_text(value)
+
         value = value.strip()
         motivo, _ = Motivo.objects.get_or_create(
             descripcion=value,
@@ -225,6 +288,9 @@ class ExpedienteForm(forms.ModelForm):
         tribunal_tipo = self.cleaned_data.get('tribunal_tipo', '')
         if not value:
             return None
+        
+        validate_alphanumeric_text(value)
+
         value = value.strip()
         tribunal, _ = Tribunal.objects.get_or_create(
             nombre=value,
@@ -342,12 +408,15 @@ class SustanciacionNotificacionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        personal = self.fields['personal']
-        personal.widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombres Apellidos'})
-        personal.label = 'Nombres y Apellidos'
-        personal.help_text = 'Escriba los nombres y apellidos del notificado. Si no existe se creará automáticamente.'
-        if self.instance and self.instance.pk and self.instance.personal_id:
-            personal.initial = self.instance.personal.get_full_name()
+        # Redefinir personal como CharField para texto libre
+        self.fields['personal'] = forms.CharField(
+            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombres Apellidos'}),
+            label='Nombres y Apellidos',
+            help_text='Escriba los nombres y apellidos del notificado. Si no existe se creará automáticamente.',
+            required=True
+        )
+        if self.instance and self.instance.pk and self.instance.personal:
+            self.initial['personal'] = self.instance.personal.get_full_name()
 
         firma = self.fields['firma_digital_hash']
         firma.widget = forms.TextInput(attrs={

@@ -202,6 +202,14 @@ class ExpedienteCreateView(LoginRequiredMixin, View):
             expediente = form.save(commit=False)
             expediente.usuario = request.user
             expediente.save()
+            
+            # Log de creación
+            Actuacion.objects.create(
+                content_object=expediente,
+                descripcion=f"Expediente {expediente.numero_expediente} creado por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
+            
             self._crear_eventos_litigios(expediente)
             messages.success(request, f'Expediente {expediente.numero_expediente} creado.')
             if expediente.tipo_modulo:
@@ -255,7 +263,10 @@ class ExpedienteUpdateView(LoginRequiredMixin, View):
     template_name = 'expedientes/expediente_form.html'
 
     def get(self, request, pk):
-        expediente = get_object_or_404(Expediente, pk=pk, deleted_at__isnull=True)
+        expediente = get_object_or_404(
+            Expediente.objects.select_related('personal', 'cargo', 'motivo', 'tribunal'),
+            pk=pk, deleted_at__isnull=True
+        )
         form = ExpedienteForm(instance=expediente)
         return render(request, self.template_name, {
             'form': form, 'accion': 'Editar', 'expediente': expediente,
@@ -267,6 +278,14 @@ class ExpedienteUpdateView(LoginRequiredMixin, View):
         form = ExpedienteForm(request.POST, instance=expediente)
         if form.is_valid():
             form.save()
+            
+            # Log de edición
+            Actuacion.objects.create(
+                content_object=expediente,
+                descripcion=f"Expediente {expediente.numero_expediente} editado por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
+            
             messages.success(request, 'Expediente actualizado.')
             return redirect('expedientes:expediente_detail', pk=expediente.pk)
         return render(request, self.template_name, {
@@ -278,9 +297,18 @@ class ExpedienteUpdateView(LoginRequiredMixin, View):
 class ExpedienteDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk):
         expediente = get_object_or_404(Expediente, pk=pk, deleted_at__isnull=True)
+        numero_exp = expediente.numero_expediente
+        
+        # Log de eliminación (antes de marcar como eliminado)
+        Actuacion.objects.create(
+            content_object=expediente,
+            descripcion=f"Expediente {numero_exp} eliminado por {request.user.get_full_name()}",
+            usuario=request.user,
+        )
+        
         expediente.deleted_at = timezone.now()
         expediente.save(update_fields=['deleted_at'])
-        messages.success(request, 'Expediente eliminado lógicamente.')
+        messages.success(request, f'Expediente {numero_exp} eliminado lógicamente.')
         return redirect('expedientes:dashboard')
 
 
@@ -319,6 +347,27 @@ class ActuacionListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Mantenemos el filtro por usuario si el modelo Actuacion lo soporta
         qs = Actuacion.objects.for_user(self.request.user).filter(deleted_at__isnull=True).select_related('usuario', 'content_type')
+        
+        expediente_ct = ContentType.objects.get_for_model(Expediente)
+        archived_expediente_ids = Expediente.objects.filter(is_archivado=True).values_list('id', flat=True)
+        
+        # 1. Acciones en expedientes NO archivados
+        qs_active = qs.filter(content_type=expediente_ct).exclude(object_id__in=archived_expediente_ids)
+        
+        # 2. Acciones específicas de archivar/desarchivar en expedientes (aunque estén archivados)
+        qs_archive_actions = qs.filter(
+            content_type=expediente_ct, 
+            object_id__in=archived_expediente_ids
+        ).filter(
+            Q(descripcion__icontains="archivado por") | Q(descripcion__icontains="desarchivado por")
+        )
+        
+        # 3. Acciones generales (sin expediente vinculado)
+        qs_general = qs.filter(content_type__isnull=True)
+        
+        # Combinar y ordenar
+        qs = (qs_active | qs_archive_actions | qs_general).distinct()
+        
         q = self.request.GET.get('q', '').strip()
         if q:
             qs = qs.filter(descripcion__icontains=q)

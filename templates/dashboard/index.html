@@ -100,9 +100,7 @@
                     </td>
                     <td>{{ exp.created_at|date:"d M Y, h:i A" }}</td>
                     <td>
-                        <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn-action" title="Ver Detalle">
-                            <i class="bi bi-eye"></i>
-                        </a>
+                        <span class="text-muted small">No disponible</span>
                     </td>
                 </tr>
                 {% empty %}
