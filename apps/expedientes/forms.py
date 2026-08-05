@@ -92,7 +92,7 @@ class CargoForm(forms.ModelForm):
 class MotivoForm(forms.ModelForm):
     class Meta:
         model = Motivo
-        exclude = ['deleted_at']
+        exclude = ['deleted_at', 'tipo']
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows': 3}),
         }

@@ -26,21 +26,79 @@
             <a href="{% url 'expedientes:motivo_create' %}" class="btn btn-dark btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo Motivo</a>
         </div>
     </div>
+
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body pb-1">
+            <form method="get" class="row g-2">
+                <div class="col-md-10">
+                    <input type="text" name="q" class="form-control" placeholder="Buscar por descripción, tipo, o nombre de persona..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Buscar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark"><tr><th>Descripción</th><th>Tipo</th><th>Acciones</th></tr></thead>
+                <thead class="table-dark">
+                    <tr>
+                        <th>Descripción</th>
+                        <th>Módulo</th>
+                        <th>Expedientes Vinculados</th>
+                        <th>Nombres y Apellidos</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for m in motivos %}
                     <tr>
-                        <td>{{ m.descripcion }}</td>
-                        <td>{{ m.tipo|default:"—" }}</td>
+                        <td class="fw-bold">{{ m.descripcion }}</td>
                         <td>
-                            <a href="{% url 'expedientes:motivo_update' m.pk %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
-                            <form method="post" action="{% url 'expedientes:motivo_delete' m.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button></form>
+                            {# Mostramos todos los módulos únicos asociados a este motivo #}
+                            {% for exp in m.expediente_set.all %}
+                                <span class="badge 
+                                    {% if exp.tipo_modulo == 'DESP' %}bg-primary
+                                    {% elif exp.tipo_modulo == 'INSP' %}bg-warning text-dark
+                                    {% elif exp.tipo_modulo == 'OFIC' %}bg-info text-dark
+                                    {% elif exp.tipo_modulo == 'CONT' %}bg-success
+                                    {% elif exp.tipo_modulo == 'LITI' %}bg-danger
+                                    {% elif exp.tipo_modulo == 'SUST' %}bg-dark
+                                    {% else %}bg-secondary{% endif %} d-block mb-1" style="font-size: 0.75em;">
+                                    {{ exp.get_tipo_modulo_display }}
+                                </span>
+                            {% empty %}
+                                <span class="text-muted small">—</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <ul class="list-unstyled mb-0">
+                                {% for exp in m.expediente_set.all %}
+                                    <li class="mb-1 text-primary fw-bold" style="font-size: 0.85em;">EXP-{{ exp.numero_expediente }}</li>
+                                {% empty %}
+                                    <li class="text-muted small">Sin expedientes</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            <ul class="list-unstyled mb-0">
+                                {% for exp in m.expediente_set.all %}
+                                    <li class="mb-1 text-dark" style="font-size: 0.85em;">{{ exp.personal.get_full_name }}</li>
+                                {% empty %}
+                                    <li class="text-muted small">—</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'expedientes:motivo_update' m.pk %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
+                                <form method="post" action="{% url 'expedientes:motivo_delete' m.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button></form>
+                            </div>
                         </td>
                     </tr>
-                    {% empty %}<tr><td colspan="3" class="text-center text-muted py-4">No hay motivos registrados.</td></tr>
+                    {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No hay motivos registrados.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

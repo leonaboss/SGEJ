@@ -26,6 +26,21 @@ from .forms import (
 from .services import AlertasService
 from apps.infraestructura.services import ImportExportService
 
+# ─── Actuacion List View (Auditoria General) ──────────────────────────────────
+
+class ActuacionListView(LoginRequiredMixin, ListView):
+    model = Actuacion
+    template_name = 'expedientes/actuacion_list.html'
+    context_object_name = 'actuaciones'
+    paginate_by = 50
+
+    def get_queryset(self):
+        # El administrador ve todo, los demás solo sus actuaciones
+        if self.request.user.rol == 'ADMIN':
+            return Actuacion.objects.all().order_by('-created_at')
+        return Actuacion.objects.filter(usuario=self.request.user).order_by('-created_at')
+
+
 
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard/index.html'
@@ -553,7 +568,24 @@ class MotivoListView(LoginRequiredMixin, ListView):
     context_object_name = 'motivos'
     paginate_by = 20
     def get_queryset(self):
-        return Motivo.objects.filter(deleted_at__isnull=True)
+        # Filtramos motivos activos y precargamos expedientes y su personal asociado
+        qs = Motivo.objects.filter(deleted_at__isnull=True).prefetch_related('expediente_set__personal')
+        
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            # Búsqueda por descripción, tipo, o nombre/apellido del personal vinculado
+            qs = qs.filter(
+                models.Q(descripcion__icontains=q) | 
+                models.Q(tipo__icontains=q) |
+                models.Q(expediente__personal__nombres__icontains=q) |
+                models.Q(expediente__personal__apellidos__icontains=q)
+            ).distinct()
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['search_query'] = self.request.GET.get('q', '')
+        return ctx
 
 class MotivoCreateView(LoginRequiredMixin, View):
     template_name = 'expedientes/motivo_form.html'

@@ -6,18 +6,20 @@ from django.db import models
 from django.db.models.expressions import RawSQL
 
 
-class DocumentoManager(models.Manager):
+class DocumentoQuerySet(models.QuerySet):
     def fulltext_search(self, query):
+        # Añadimos * al final para búsqueda parcial (prefijo)
+        query_formatted = f"{query}*"
         sql = "MATCH(nombre_original, contenido_ocr) AGAINST(%s IN BOOLEAN MODE)"
-        return self.filter(RawSQL(sql, [query])).annotate(
-            relevance=RawSQL(sql, [query])
-        ).order_by('-relevance')
-
+        return self.annotate(
+            relevance=RawSQL(sql, [query_formatted])
+        ).filter(relevance__gt=0).order_by('-relevance')
 
 class Documento(models.Model):
     """Documento cifrado at-rest con hash SHA-256 de integridad."""
-    objects = DocumentoManager()
+    objects = DocumentoQuerySet.as_manager()
     
+    # ... resto del modelo ...
     expediente = models.ForeignKey(
         'expedientes.Expediente', on_delete=models.PROTECT,
         blank=True, null=True, db_column='expediente_id'
@@ -31,7 +33,7 @@ class Documento(models.Model):
     tipo_mime = models.TextField()
     hash_sha256 = models.CharField(max_length=64)
     iv_cifrado = models.CharField(max_length=512)
-    qr_code_content = models.CharField(max_length=255, unique=True, blank=True, null=True)
+    qr_code_content = models.CharField(max_length=255, blank=True, null=True)
     contenido_ocr = models.TextField(blank=True, null=True)
     version = models.IntegerField(default=1)
     parent_documento = models.ForeignKey(

@@ -7,10 +7,11 @@ from django.views import View
 from django.views.generic import ListView, DetailView
 from django.contrib import messages
 from django.http import FileResponse, HttpResponse
+from io import BytesIO
 from django.db.models import Q
 from .models import Documento, PlantillaDocumento
 from .forms import DocumentoUploadForm, PlantillaForm
-from apps.documentos.services import DocumentoSecurizadoService, PlantillaService
+from apps.documentos.services import DocumentoSecurizadoService, PlantillaService, DocumentVersioningService
 from apps.expedientes.models import Expediente
 
 class DocumentoListView(LoginRequiredMixin, ListView):
@@ -104,18 +105,33 @@ class DocumentoDownloadView(LoginRequiredMixin, View):
                 )
                 return response
             filename = documento.nombre_original
+            is_download = request.GET.get('action') == 'download'
+            disposition = 'attachment' if is_download else 'inline'
+            
             ext = os.path.splitext(filename)[1].lower()
             if ext == '.pdf':
                 marca = f"Accedido por: {request.user.get_full_name()} | Cédula: {request.user.cedula} | {timezone.now().strftime('%d/%m/%Y %H:%M')}"
                 pdf_con_marca = DocumentoSecurizadoService.aplicar_marca_agua(contenido_descifrado, marca)
-                response = HttpResponse(pdf_con_marca, content_type='application/pdf')
-                response['Content-Disposition'] = f'inline; filename="{documento.nombre_original}"'
+                # Forzar descarga como octet-stream si es acción de descarga
+                content_type = 'application/octet-stream' if is_download else 'application/pdf'
+                response = HttpResponse(pdf_con_marca, content_type=content_type)
+                response['Content-Disposition'] = f'{disposition}; filename="{documento.nombre_original}"'
                 return response
+            
+            # Forzar descarga como octet-stream si es acción de descarga
+            if is_download:
+                content_type = 'application/octet-stream'
+            else:
+                # Asegurar tipo de imagen para visualización inline
+                content_type = documento.tipo_mime
+                if 'image/' in content_type:
+                    content_type = 'image/jpeg'
+            
             response = FileResponse(
-                contenido_descifrado,
-                content_type=documento.tipo_mime,
+                BytesIO(contenido_descifrado),
+                content_type=content_type,
             )
-            response['Content-Disposition'] = f'inline; filename="{documento.nombre_original}"'
+            response['Content-Disposition'] = f'{disposition}; filename="{documento.nombre_original}"'
             return response
         except FileNotFoundError:
             messages.error(request, 'El archivo físico no se encuentra en el servidor.')

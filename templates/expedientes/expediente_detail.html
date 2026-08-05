@@ -64,9 +64,35 @@
                         </ul>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <a href="{% url 'expedientes:expediente_update' expediente.pk %}" class="btn btn-outline-dark btn-sm w-100"><i class="bi bi-pencil me-1"></i>Editar Datos</a>
+                <div class="mt-3 d-flex gap-2">
+                    <a href="{% url 'expedientes:expediente_update' expediente.pk %}" class="btn btn-outline-dark btn-sm flex-grow-1"><i class="bi bi-pencil me-1"></i>Editar Datos</a>
+                    <a href="{% url 'documentos:plantilla_list' %}" class="btn btn-primary btn-sm flex-grow-1"><i class="bi bi-file-earmark-plus me-1"></i>Generar Documento</a>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sección de Documentos -->
+    <div class="col-lg-12 mb-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pt-4">
+                <h6 class="fw-bold mb-0"><i class="bi bi-files me-2"></i>Documentos Vinculados</h6>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-3">No hay documentos generados para este expediente.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
