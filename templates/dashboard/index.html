@@ -52,8 +52,8 @@
 <div class="sgej-table-container mt-2">
     <div class="sgej-table-header">
         <h3 class="sgej-table-title">Actividad Reciente Global</h3>
-        <div class="sgej-search-bar">
-            <i class="bi bi-search text-muted"></i>
+        <div class="sgej-search-bar d-flex">
+            <i class="bi bi-search text-muted my-auto ms-2"></i>
             <input type="text" id="search-historial" class="form-control sgej-search-input" placeholder="Filtrar historial...">
         </div>
     </div>
@@ -100,7 +100,14 @@
                     </td>
                     <td>{{ exp.created_at|date:"d M Y, h:i A" }}</td>
                     <td>
-                        <span class="text-muted small">No disponible</span>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-info" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'expedientes:expediente_update' exp.pk %}" class="btn btn-sm btn-outline-warning" title="Editar"><i class="bi bi-pencil"></i></a>
+                            <form method="POST" action="{% url 'expedientes:expediente_archivar' exp.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archivar" onclick="return confirm('¿Archivar este expediente?')"><i class="bi bi-archive"></i></button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

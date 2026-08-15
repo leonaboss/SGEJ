@@ -167,6 +167,12 @@ if not DEBUG:
     CSRF_COOKIE_HTTPONLY = True
     CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = 'DENY'
+    # Agregando las nuevas configuraciones de seguridad:
+    SECURE_SSL_REDIRECT = True
+    # Se recomienda usar un valor mayor en producción, por ejemplo, 2592000 (30 días)
+    SECURE_HSTS_SECONDS = 31536000 # 1 año, un valor robusto para producción
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 # ============================================
 # REST Framework

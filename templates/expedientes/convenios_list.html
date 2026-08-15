@@ -3,6 +3,7 @@
 {% block module_title %}Contrataciones y Convenios{% endblock %}
 {% block search_placeholder %}Buscar institución...{% endblock %}
 {% block table_headers %}
+<th>N° de Convenio / Contrato</th>
 <th>Institución</th>
 <th>Año</th>
 <th>Duración</th>
@@ -10,10 +11,13 @@
 <th>Fecha de Vencimiento</th>
 {% endblock %}
 {% block table_cells %}
-<td><span class="fw-semibold">{{ exp.institucion|default:"-" }}</span></td>
+<td><span class="fw-semibold">{{ exp.numero_expediente|default:"-" }}</span></td>
+<td>{{ exp.institucion|default:"-" }}</td>
 <td>{{ exp.ano|default:"-" }}</td>
 <td>{{ exp.duracion|default:"-" }}</td>
 <td>{{ exp.tipo_convenio|default:"-"|truncatechars:50 }}</td>
 <td>{{ exp.fecha_vencimiento|date:"d M Y"|default:"-" }}</td>
 {% endblock %}
 {% block empty_message %}No se encontraron convenios registrados.{% endblock %}
+
+{% block excel_button %}{% endblock %}

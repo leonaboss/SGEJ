@@ -9,52 +9,346 @@ from .models import (
     SujetoProcesal
 )
 from apps.usuarios.models import Usuario
+from apps.usuarios.forms import clean_personal_text
 
-
-# Validaciones internas para mantener forms.py autónomo
+# --- Validaciones / Helpers ---
 def validate_text_only(value):
-    """Solo letras y espacios."""
     if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', value.strip()):
         raise ValidationError('El campo solo debe contener letras y espacios.')
 
 def validate_alphanumeric_text(value):
-    """Letras, números, espacios y signos básicos."""
     if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\.\,\-]+$', value.strip()):
         raise ValidationError('El campo contiene caracteres no permitidos.')
 
+# --- Mixins de Validación ---
+class PersonalValidationMixin:
+    def clean_nombre_completo(self):
+        value = self.cleaned_data.get('nombre_completo', '').strip()
+        if not value or ' ' not in value:
+            raise forms.ValidationError('Debe ingresar Nombres y Apellidos separados por un espacio.')
+        return value
 
-def clean_personal_text(value, cedula=None):
-    """Resuelve texto 'nombres apellidos' en un objeto Personal (get_or_create)."""
-    partes = value.strip().split(None, 1)
-    if len(partes) < 2:
-        raise forms.ValidationError('Ingrese nombres y apellidos separados por espacio.')
-    nombres = partes[0]
-    apellidos = partes[1]
-    
-    # 1. Buscar por nombre
-    personal = Personal.objects.filter(nombres=nombres, apellidos=apellidos, deleted_at__isnull=True).first()
-    
-    # Si existe, verificar si debemos actualizar su cédula
-    if personal:
-        if cedula and (personal.cedula.startswith('TMP-') or not personal.cedula):
+    def save_personal(self, instance):
+        nombre_completo = self.cleaned_data.get('nombre_completo', '')
+        if not nombre_completo: return
+        parts = nombre_completo.split(' ', 1)
+        nombres = parts[0]
+        apellidos = parts[1] if len(parts) > 1 else ''
+        cedula = (self.cleaned_data.get('cedula') or '').strip() or None
+        
+        if not nombres:
+            return
+        if not cedula:
+            import hashlib
+            raw = f"{nombres}|{apellidos}|{timezone.now().isoformat()}"
+            cedula = f"TMP-{hashlib.md5(raw.encode()).hexdigest()[:8].upper()}"
+        
+        personal = Personal.objects.filter(cedula=cedula, deleted_at__isnull=True).first()
+        if not personal:
+            personal = Personal.objects.filter(
+                nombres=nombres, apellidos=apellidos, deleted_at__isnull=True
+            ).first()
+        if not personal:
+            personal = Personal.objects.create(cedula=cedula, nombres=nombres, apellidos=apellidos)
+        elif cedula and not personal.cedula.startswith('TMP-') and personal.cedula != cedula:
             personal.cedula = cedula
             personal.save(update_fields=['cedula'])
-        return personal
+        instance.personal = personal
+
+class CargoValidationMixin:
+    def clean_cargo(self):
+        if 'cargo' not in self.fields: return None
+        value = self.cleaned_data.get('cargo')
+        if not value: return None
+        if isinstance(value, Cargo):
+            return value
+        validate_alphanumeric_text(value)
+        value = value.strip()
+        cargo, _ = Cargo.objects.get_or_create(descripcion=value, defaults={'categoria': 'DOC', 'tipo': 'FIJ', 'marco_legal': 'Por definir'})
+        return cargo
     
-    # 2. Buscar por cédula si fue provista
-    if cedula:
-        personal = Personal.objects.filter(cedula=cedula, deleted_at__isnull=True).first()
-        if personal:
-            return personal
-        # Crear con la cédula provista
-        return Personal.objects.create(cedula=cedula, nombres=nombres, apellidos=apellidos)
+    def save_cargo(self, instance):
+        if 'cargo' in self.cleaned_data and self.cleaned_data['cargo']: instance.cargo = self.cleaned_data['cargo']
 
-    # 3. Fallback a cédula temporal
-    raw = f"{value}|{timezone.now().isoformat()}"
-    cedula_tmp = f"TMP-{hashlib.md5(raw.encode()).hexdigest()[:8].upper()}"
-    return Personal.objects.create(cedula=cedula_tmp, nombres=nombres, apellidos=apellidos)
+class MotivoValidationMixin:
+    def clean_motivo(self):
+        if 'motivo' not in self.fields: return None
+        value = self.cleaned_data.get('motivo')
+        if not value: return None
+        validate_alphanumeric_text(value)
+        value = value.strip()
+        motivo, _ = Motivo.objects.get_or_create(descripcion=value, defaults={'tipo': ''})
+        return motivo
+    
+    def save_motivo(self, instance):
+        if 'motivo' in self.cleaned_data and self.cleaned_data['motivo']: instance.motivo = self.cleaned_data['motivo']
 
+class TribunalValidationMixin:
+    def clean_tribunal(self):
+        if 'tribunal' not in self.fields: return None
+        value = self.cleaned_data.get('tribunal')
+        if not value: return None
+        if isinstance(value, Tribunal):
+            return value
+        validate_alphanumeric_text(value)
+        value = value.strip()
+        # El tribunal_tipo ya no se obtiene del form, se define por defecto o si se tiene de otra fuente
+        tribunal, _ = Tribunal.objects.get_or_create(nombre=value, defaults={'tipo': 'OTRO'})
+        return tribunal
+    
+    def save_tribunal(self, instance):
+        if 'tribunal' in self.cleaned_data and self.cleaned_data['tribunal']: instance.tribunal = self.cleaned_data['tribunal']
 
+# --- Base Form ---
+class BaseExpedienteForm(forms.ModelForm):
+    nombre_completo = forms.CharField(
+        max_length=200, 
+        label='Nombres y Apellidos', 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Juan Pérez'}),
+        required=False
+    )
+    motivo = forms.CharField(
+        max_length=255,
+        label='Motivo',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Escriba el motivo aquí'}),
+        required=False
+    )
+    class Meta:
+        model = Expediente
+        exclude = ['deleted_at', 'created_at', 'updated_at', 'firma_digital_hash', 'huella_digital_hash', 'defensor', 'fiscal', 'juez', 'secretario', 'documentos_procesados', 'correspondencia_recibida', 'correspondencia_enviada', 'is_archivado', 'personal', 'tipo_modulo', 'nombre_completo']
+        widgets = {
+            'fecha_registro': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fecha_demanda': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'hora_procedimiento': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'cronometro_limite': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+        }
+        labels = {
+            'numero_expediente': 'N° Expediente',
+            'numero_expediente_relativo': 'N° Exp. Relativo',
+            'cedula': 'Cédula',
+            'estatus': 'Estatus',
+            'fecha_registro': 'Fecha Registro',
+            'fecha_demanda': 'Fecha de Demanda',
+            'tribunal': 'Tribunal',
+            'fase_actual': 'Fase',
+            'cronometro_limite': 'Cronómetro Legal',
+            'motivo': 'Motivo',
+            'cargo': 'Cargo',
+            'institucion': 'Institución',
+            'ano': 'Año',
+            'duracion': 'Duración',
+            'tipo_convenio': 'Tipo de Convenio',
+            'fecha_vencimiento': 'Fecha de Vencimiento',
+            'tipo_demanda': 'Tipo de Demanda',
+            'hora_procedimiento': 'Hora',
+            'lugar_procedimiento': 'Lugar',
+            'nombre_completo': 'Nombres y Apellidos',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.personal:
+            self.initial['nombre_completo'] = self.instance.personal.get_full_name()
+        if self.instance and self.instance.pk and self.instance.motivo:
+            self.initial['motivo'] = self.instance.motivo.descripcion
+        if hasattr(self, 'fields_order'):
+            self.order_fields(self.fields_order)
+    
+    def clean_numero_expediente(self):
+        # Solo validar si el campo es parte del formulario activo
+        if 'numero_expediente' not in self.fields:
+            return None
+        value = self.cleaned_data.get('numero_expediente', '').strip()
+        if not value: raise forms.ValidationError('El número de expediente es obligatorio.')
+        return value
+
+# --- Specialized Forms ---
+class DespidoExpedienteForm(BaseExpedienteForm, PersonalValidationMixin, MotivoValidationMixin, CargoValidationMixin):
+    fields_order = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'estatus']
+    class Meta(BaseExpedienteForm.Meta):
+        fields = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'estatus']
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        self.save_personal(instance)
+        self.save_motivo(instance)
+        self.save_cargo(instance)
+        if commit: instance.save()
+        return instance
+
+class InspectoriaExpedienteForm(BaseExpedienteForm, PersonalValidationMixin, MotivoValidationMixin, CargoValidationMixin):
+    fields_order = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'fecha_registro']
+    class Meta(BaseExpedienteForm.Meta):
+        fields = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'fecha_registro']
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        self.save_personal(instance)
+        self.save_motivo(instance)
+        self.save_cargo(instance)
+        if commit: instance.save()
+        return instance
+
+class OficinaExpedienteForm(BaseExpedienteForm, PersonalValidationMixin, CargoValidationMixin, MotivoValidationMixin):
+    fields_order = ['numero_expediente', 'numero_expediente_relativo', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'estatus']
+    class Meta(BaseExpedienteForm.Meta):
+        fields = ['numero_expediente', 'numero_expediente_relativo', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'estatus']
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        self.save_personal(instance)
+        self.save_cargo(instance)
+        self.save_motivo(instance)
+        if commit: instance.save()
+        return instance
+
+class ConvenioExpedienteForm(BaseExpedienteForm):
+    numero_expediente = forms.CharField(
+        max_length=50,
+        label='N° de Convenio / Contrato',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: CONV-2026-0001'}),
+        required=True
+    )
+    fields_order = ['numero_expediente', 'institucion', 'ano', 'duracion', 'tipo_convenio', 'fecha_vencimiento']
+    class Meta(BaseExpedienteForm.Meta):
+        fields = ['numero_expediente', 'institucion', 'ano', 'duracion', 'tipo_convenio', 'fecha_vencimiento']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'motivo' in self.fields:
+            del self.fields['motivo']
+        if 'nombre_completo' in self.fields:
+            del self.fields['nombre_completo']
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if not instance.numero_expediente:
+            import uuid
+            instance.numero_expediente = f"CONT-{uuid.uuid4().hex[:8].upper()}"
+        if commit:
+            instance.save()
+        return instance
+
+class LitigioExpedienteForm(BaseExpedienteForm, TribunalValidationMixin):
+    tipo_demanda = forms.CharField(
+        max_length=255,
+        label='Tipo de Demanda',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Demanda Laboral'}),
+        required=True
+    )
+    tribunal = forms.CharField(
+        max_length=255,
+        label='Tribunal',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Tribunal Supremo de Justicia'}),
+        required=False
+    )
+    numero_expediente = forms.CharField(
+        max_length=50,
+        label='N° de Litigio',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: LITI-2026-0001'}),
+        required=False,
+        help_text='Si se deja vacío se genera automáticamente.'
+    )
+    fields_order = ['tipo_demanda', 'fecha_demanda', 'estatus', 'tribunal', 'numero_expediente']
+    class Meta(BaseExpedienteForm.Meta):
+        fields = ['tipo_demanda', 'fecha_demanda', 'estatus', 'tribunal', 'numero_expediente']
+    def clean_numero_expediente(self):
+        value = self.cleaned_data.get('numero_expediente', '').strip()
+        return value or None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'motivo' in self.fields:
+            del self.fields['motivo']
+        if 'nombre_completo' in self.fields:
+            del self.fields['nombre_completo']
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        self.save_tribunal(instance)
+        if not instance.numero_expediente:
+            import uuid
+            instance.numero_expediente = f"LITI-{uuid.uuid4().hex[:8].upper()}"
+        if commit: instance.save()
+        return instance
+
+class SustanciacionExpedienteForm(BaseExpedienteForm, PersonalValidationMixin, MotivoValidationMixin, CargoValidationMixin):
+    fields_order = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'fecha_registro', 'hora_procedimiento', 'lugar_procedimiento', 'firma_digital_hash', 'huella_digital_hash', 'fase_actual', 'cronometro_limite', 'estatus']
+    class Meta(BaseExpedienteForm.Meta):
+        fields = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'fecha_registro', 'hora_procedimiento', 'lugar_procedimiento', 'firma_digital_hash', 'huella_digital_hash', 'fase_actual', 'cronometro_limite', 'estatus']
+        exclude = []
+        labels = {
+            **BaseExpedienteForm.Meta.labels,
+            'fecha_registro': 'Fecha Notif.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Aseguramos que los campos de hash estén presentes si no estaban
+        if 'firma_digital_hash' not in self.fields:
+            self.fields['firma_digital_hash'] = forms.CharField(required=False)
+        if 'huella_digital_hash' not in self.fields:
+            self.fields['huella_digital_hash'] = forms.CharField(required=False)
+            
+        self.fields['firma_digital_hash'].widget.attrs.update({'class': 'form-control font-monospace', 'readonly': True})
+        self.fields['huella_digital_hash'].widget.attrs.update({'class': 'form-control font-monospace', 'readonly': True})
+        self.fields['firma_digital_hash'].label = 'Firma (SHA-256)'
+        self.fields['huella_digital_hash'].label = 'Huella'
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        self.save_personal(instance)
+        self.save_motivo(instance)
+        self.save_cargo(instance)
+        # Lógica de generación de hashes
+        raw_firma = f"{instance.numero_expediente}|{instance.cedula}|{instance.personal.get_full_name() if instance.personal_id else ''}|{timezone.now().isoformat()}"
+        instance.firma_digital_hash = hashlib.sha256(raw_firma.encode()).hexdigest()
+        raw_huella = f"{instance.personal.get_full_name() if instance.personal_id else ''}|{instance.cedula}|{timezone.now().isoformat()}|{instance.numero_expediente}"
+        instance.huella_digital_hash = hashlib.sha256(raw_huella.encode()).hexdigest()
+        if commit: instance.save()
+        return instance
+
+class IndiceExpedienteForm(BaseExpedienteForm, PersonalValidationMixin, MotivoValidationMixin, CargoValidationMixin):
+    fields_order = ['nombre_completo', 'cedula', 'numero_expediente', 'cargo', 'motivo']
+    class Meta(BaseExpedienteForm.Meta):
+        fields = ['nombre_completo', 'cedula', 'numero_expediente', 'cargo', 'motivo']
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        self.save_personal(instance)
+        self.save_motivo(instance)
+        self.save_cargo(instance)
+        if commit: instance.save()
+        return instance
+
+class GeneralExpedienteForm(BaseExpedienteForm, PersonalValidationMixin, CargoValidationMixin, MotivoValidationMixin, TribunalValidationMixin):
+    tribunal = forms.CharField(
+        max_length=255,
+        label='Tribunal',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Tribunal Supremo de Justicia'}),
+        required=False
+    )
+    class Meta(BaseExpedienteForm.Meta):
+        fields = '__all__'
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        self.save_personal(instance)
+        self.save_cargo(instance)
+        self.save_motivo(instance)
+        self.save_tribunal(instance)
+        if commit: instance.save()
+        return instance
+
+# Map for the views to use
+FORM_FACTORY = {
+    'DESP': DespidoExpedienteForm,
+    'INSP': InspectoriaExpedienteForm,
+    'OFIC': OficinaExpedienteForm,
+    'CONT': ConvenioExpedienteForm,
+    'LITI': LitigioExpedienteForm,
+    'SUST': SustanciacionExpedienteForm,
+    'IND': IndiceExpedienteForm,
+    'DEFAULT': GeneralExpedienteForm
+}
+
+# --- Supporting Forms ---
 class PersonalForm(forms.ModelForm):
     class Meta:
         model = Personal
@@ -73,7 +367,6 @@ class PersonalForm(forms.ModelForm):
         validate_text_only(value)
         return value
 
-
 class CargoForm(forms.ModelForm):
     class Meta:
         model = Cargo
@@ -88,13 +381,13 @@ class CargoForm(forms.ModelForm):
             validate_alphanumeric_text(value)
         return value
 
-
 class MotivoForm(forms.ModelForm):
     class Meta:
         model = Motivo
-        exclude = ['deleted_at', 'tipo']
+        exclude = ['deleted_at']
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows': 3}),
+            'tipo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Administrativo, Legal'}),
         }
 
     def clean_descripcion(self):
@@ -103,6 +396,11 @@ class MotivoForm(forms.ModelForm):
             validate_alphanumeric_text(value)
         return value
 
+    def clean_tipo(self):
+        value = self.cleaned_data.get('tipo')
+        if value:
+            validate_alphanumeric_text(value)
+        return value
 
 class TribunalForm(forms.ModelForm):
     class Meta:
@@ -115,240 +413,6 @@ class TribunalForm(forms.ModelForm):
             validate_alphanumeric_text(value)
         return value
 
-
-class ExpedienteForm(forms.ModelForm):
-    # Redefinir solo campos especiales que no sean de relación simple
-    tribunal_tipo = forms.ChoiceField(
-        choices=Tribunal.TipoTribunalChoices.choices,
-        label='Tipo de Tribunal',
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        required=False,
-    )
-
-    class Meta:
-        model = Expediente
-        fields = [
-            'numero_expediente', 'numero_expediente_relativo', 'cedula', 'tipo_modulo',
-            'personal', 'estatus', 'fecha_registro', 'motivo', 'cargo', 'tema_filtro',
-            'institucion', 'ano', 'duracion', 'tipo_convenio', 'fecha_vencimiento',
-            'tipo_demanda', 'fecha_demanda', 'tribunal',
-            'hora_procedimiento', 'lugar_procedimiento', 'fase_actual', 'cronometro_limite',
-            'firma_digital_hash', 'huella_digital_hash',
-        ]
-        widgets = {
-            'tipo_convenio': forms.Textarea(attrs={'rows': 3}),
-            'fecha_registro': forms.DateInput(attrs={'type': 'date'}),
-            'fecha_vencimiento': forms.DateInput(attrs={'type': 'date'}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Cédula (campo normal, se mantiene TextInput)
-        self.fields['cedula'].widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'})
-        self.fields['cedula'].label = 'Cédula'
-        self.fields['cedula'].help_text = 'Formato: V- seguido solo de números (ej: V-12345678).'
-
-        # --- CAMPOS DE RELACIÓN (Cambiados a CharField para permitir texto libre) ---
-        
-        # Personal
-        self.fields['personal'] = forms.CharField(
-            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombres Apellidos'}),
-            label='Nombres y Apellidos de la Persona',
-            help_text='Escriba los nombres y apellidos. Si no existe se creará automáticamente.',
-            required=True
-        )
-        if self.instance and self.instance.pk and self.instance.personal:
-            self.initial['personal'] = self.instance.personal.get_full_name()
-
-        # Cargo
-        self.fields['cargo'] = forms.CharField(
-            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Docente, Administrativo, Obrero'}),
-            label='Cargo',
-            help_text='Escriba el cargo. Si no existe se creará automáticamente.',
-            required=False
-        )
-        if self.instance and self.instance.pk and self.instance.cargo:
-            self.initial['cargo'] = str(self.instance.cargo)
-
-        # Motivo
-        self.fields['motivo'] = forms.CharField(
-            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Jubilación, Renuncia, Ingreso'}),
-            label='Motivo',
-            help_text='Escriba el motivo. Si no existe se creará automáticamente.',
-            required=False
-        )
-        if self.instance and self.instance.pk and self.instance.motivo:
-            self.initial['motivo'] = str(self.instance.motivo)
-
-        # Tribunal
-        self.fields['tribunal'] = forms.CharField(
-            widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del tribunal'}),
-            label='Nombre del Tribunal',
-            help_text='Escriba el nombre del tribunal.',
-            required=False
-        )
-        if self.instance and self.instance.pk and self.instance.tribunal:
-            self.initial['tribunal'] = str(self.instance.tribunal)
-        
-        # ----------------------------------------------------------------------------
-
-
-    def _configure_fields_for_module(self, tipo_modulo):
-        """Configura visibilidad y widgets según el módulo."""
-        convenios_fields = ['institucion', 'ano', 'duracion', 'tipo_convenio', 'fecha_vencimiento']
-        litigios_fields = ['tipo_demanda', 'tribunal_tipo', 'tribunal']
-        sust_fields = ['hora_procedimiento', 'lugar_procedimiento', 'fase_actual', 'cronometro_limite',
-                       'firma_digital_hash', 'huella_digital_hash']
-
-        # Campos que siempre deben estar ocultos si no es el módulo correspondiente
-        fields_to_hide = []
-        if tipo_modulo != 'SUST':
-            fields_to_hide.extend(sust_fields)
-        if tipo_modulo != 'LITI':
-            fields_to_hide.extend(litigios_fields)
-        if tipo_modulo != 'CONT':
-            fields_to_hide.extend(convenios_fields)
-            
-        for f in set(fields_to_hide):
-            self.fields.pop(f, None)
-
-        # Configuración específica para SUST (campos visibles pero de solo lectura)
-        if tipo_modulo == 'SUST':
-            firma = self.fields.get('firma_digital_hash')
-            if firma:
-                firma.widget = forms.TextInput(attrs={
-                    'class': 'form-control font-monospace',
-                    'placeholder': 'Se genera automáticamente al guardar',
-                    'readonly': True,
-                })
-                firma.label = 'Firma Digital (SHA-256)'
-                firma.required = False
-
-            huella = self.fields.get('huella_digital_hash')
-            if huella:
-                huella.widget = forms.TextInput(attrs={
-                    'class': 'form-control font-monospace',
-                    'placeholder': 'Se genera automáticamente al guardar',
-                    'readonly': True,
-                })
-                huella.label = 'Huella Digital (SHA-256)'
-                huella.required = False
-
-    def clean_personal(self):
-        value = self.cleaned_data.get('personal')
-        # Intentar obtener cedula de cleaned_data o fallback a raw data para asegurar valor
-        cedula = self.cleaned_data.get('cedula') or self.data.get('cedula')
-        
-        if not value:
-            raise forms.ValidationError('El campo personal es obligatorio.')
-        
-        # Validar si el valor es solo números
-        if value.isdigit():
-             raise forms.ValidationError('Debe ingresar el nombre y apellido, no solo números.')
-
-        validate_text_only(value)
-            
-        return clean_personal_text(value, cedula=cedula)
-
-    def clean_cargo(self):
-        value = self.cleaned_data.get('cargo')
-        if not value:
-            return None
-        
-        validate_alphanumeric_text(value)
-            
-        value = value.strip()
-        cargo, _ = Cargo.objects.get_or_create(
-            descripcion=value,
-            defaults={
-                'categoria': 'DOC',
-                'tipo': 'FIJ',
-                'marco_legal': '',
-            }
-        )
-        return cargo
-
-    def clean_motivo(self):
-        value = self.cleaned_data.get('motivo')
-        if not value:
-            return None
-            
-        validate_alphanumeric_text(value)
-
-        value = value.strip()
-        motivo, _ = Motivo.objects.get_or_create(
-            descripcion=value,
-            defaults={'tipo': ''}
-        )
-        return motivo
-
-    def clean_tribunal(self):
-        value = self.cleaned_data.get('tribunal')
-        tribunal_tipo = self.cleaned_data.get('tribunal_tipo', '')
-        if not value:
-            return None
-        
-        validate_alphanumeric_text(value)
-
-        value = value.strip()
-        tribunal, _ = Tribunal.objects.get_or_create(
-            nombre=value,
-            defaults={'tipo': tribunal_tipo or 'OTRO'}
-        )
-        if tribunal.tipo != tribunal_tipo and tribunal_tipo:
-            tribunal.tipo = tribunal_tipo
-            tribunal.save(update_fields=['tipo'])
-        return tribunal
-
-    def clean_numero_expediente(self):
-        value = self.cleaned_data.get('numero_expediente', '').strip()
-        if not value:
-            raise forms.ValidationError('El número de expediente es obligatorio.')
-        return value
-
-    def clean_cedula(self):
-        value = self.cleaned_data.get('cedula', '').strip().upper()
-        if not value:
-            raise forms.ValidationError('La cédula es obligatoria.')
-        if value.startswith('V-'):
-            numeric = value[2:]
-        elif value.startswith('V'):
-            numeric = value[1:]
-        else:
-            numeric = value
-        if not numeric or not numeric.isdigit():
-            raise forms.ValidationError('Formato: V- seguido solo de números (ej: V-12345678).')
-        if len(numeric) < 6:
-            raise forms.ValidationError('La cédula debe tener al menos 6 dígitos.')
-        return f'V-{numeric}'
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        if instance.tipo_modulo == 'SUST':
-            raw_firma = (
-                str(instance.numero_expediente) + '|' +
-                str(instance.cedula) + '|' +
-                str(instance.personal.get_full_name() if instance.personal_id else '') + '|' +
-                str(instance.cargo) + '|' +
-                str(instance.motivo) + '|' +
-                str(instance.tribunal) + '|' +
-                timezone.now().isoformat()
-            )
-            instance.firma_digital_hash = hashlib.sha256(raw_firma.encode()).hexdigest()
-
-            raw_huella = (
-                str(instance.personal.get_full_name() if instance.personal_id else '') + '|' +
-                str(instance.cedula) + '|' +
-                timezone.now().isoformat() + '|' +
-                str(hash(instance))
-            )
-            instance.huella_digital_hash = hashlib.sha256(raw_huella.encode()).hexdigest()
-        if commit:
-            instance.save()
-        return instance
-
-
 class ActuacionForm(forms.ModelForm):
     class Meta:
         model = Actuacion
@@ -356,7 +420,6 @@ class ActuacionForm(forms.ModelForm):
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows': 3}),
         }
-
 
 class AudienciaAgendaForm(forms.ModelForm):
     class Meta:
@@ -380,7 +443,6 @@ class AudienciaAgendaForm(forms.ModelForm):
             ).select_related('personal')
             usuario.choices = [(u.pk, f'{u.get_full_name()} ({u.usuario})') for u in usuario.queryset]
 
-
 class LitigioContraparteForm(forms.ModelForm):
     class Meta:
         model = LitigioContraparte
@@ -389,12 +451,10 @@ class LitigioContraparteForm(forms.ModelForm):
             'datos_contacto': forms.Textarea(attrs={'rows': 3}),
         }
 
-
 class PersonaCargoForm(forms.ModelForm):
     class Meta:
         model = PersonaCargo
         exclude = ['deleted_at']
-
 
 class SustanciacionNotificacionForm(forms.ModelForm):
     class Meta:
@@ -407,8 +467,6 @@ class SustanciacionNotificacionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # Redefinir personal como CharField para texto libre
         self.fields['personal'] = forms.CharField(
             widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombres Apellidos'}),
             label='Nombres y Apellidos',
@@ -417,25 +475,13 @@ class SustanciacionNotificacionForm(forms.ModelForm):
         )
         if self.instance and self.instance.pk and self.instance.personal:
             self.initial['personal'] = self.instance.personal.get_full_name()
-
+        
         firma = self.fields['firma_digital_hash']
-        firma.widget = forms.TextInput(attrs={
-            'class': 'form-control font-monospace',
-            'placeholder': 'Se genera automáticamente al guardar',
-            'readonly': True,
-        })
-        firma.label = 'Firma Digital (SHA-256)'
-        firma.help_text = 'Hash SHA-256 generado automáticamente al guardar la notificación.'
+        firma.widget = forms.TextInput(attrs={'class': 'form-control font-monospace', 'placeholder': 'Se genera automáticamente al guardar', 'readonly': True})
         firma.required = False
-
+        
         huella = self.fields['huella_digital_hash']
-        huella.widget = forms.TextInput(attrs={
-            'class': 'form-control font-monospace',
-            'placeholder': 'Se genera automáticamente al guardar',
-            'readonly': True,
-        })
-        huella.label = 'Huella Digital (SHA-256)'
-        huella.help_text = 'Hash SHA-256 generado automáticamente al guardar la notificación.'
+        huella.widget = forms.TextInput(attrs={'class': 'form-control font-monospace', 'placeholder': 'Se genera automáticamente al guardar', 'readonly': True})
         huella.required = False
 
     def clean_personal(self):
@@ -446,28 +492,13 @@ class SustanciacionNotificacionForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        raw_firma = (
-            str(getattr(instance.expediente, 'numero_expediente', '')) + '|' +
-            str(instance.personal.get_full_name()) + '|' +
-            str(instance.fecha) + '|' +
-            str(instance.hora) + '|' +
-            str(instance.lugar) + '|' +
-            timezone.now().isoformat()
-        )
+        instance.personal = self.cleaned_data['personal']
+        raw_firma = f"{getattr(instance.expediente, 'numero_expediente', '')}|{instance.personal.get_full_name()}|{instance.fecha}|{instance.hora}|{instance.lugar}|{timezone.now().isoformat()}"
         instance.firma_digital_hash = hashlib.sha256(raw_firma.encode()).hexdigest()
-
-        raw_huella = (
-            str(instance.personal.get_full_name()) + '|' +
-            str(instance.personal.cedula) + '|' +
-            timezone.now().isoformat() + '|' +
-            str(hash(instance))
-        )
+        raw_huella = f"{instance.personal.get_full_name()}|{instance.personal.cedula}|{timezone.now().isoformat()}|{hash(instance)}"
         instance.huella_digital_hash = hashlib.sha256(raw_huella.encode()).hexdigest()
-
-        if commit:
-            instance.save()
+        if commit: instance.save()
         return instance
-
 
 class SujetoProcesalForm(forms.ModelForm):
     class Meta:
@@ -482,6 +513,5 @@ class SujetoProcesalForm(forms.ModelForm):
         self.fields['tipo'].empty_label = None
         for f in self.fields.values():
             css = 'form-select' if isinstance(f.widget, forms.Select) else 'form-control'
-            if isinstance(f.widget, forms.Textarea):
-                css = 'form-control'
+            if isinstance(f.widget, forms.Textarea): css = 'form-control'
             f.widget.attrs.setdefault('class', css)

@@ -18,10 +18,10 @@ from .models import (
     SujetoProcesal
 )
 from .forms import (
-    ExpedienteForm, PersonalForm, CargoForm, MotivoForm, TribunalForm,
+    PersonalForm, CargoForm, MotivoForm, TribunalForm,
     ActuacionForm, AudienciaAgendaForm, PersonaCargoForm,
     LitigioContraparteForm, SustanciacionNotificacionForm,
-    SujetoProcesalForm
+    SujetoProcesalForm, FORM_FACTORY, GeneralExpedienteForm
 )
 from .services import AlertasService
 from apps.infraestructura.services import ImportExportService
@@ -37,8 +37,8 @@ class ActuacionListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # El administrador ve todo, los demás solo sus actuaciones
         if self.request.user.rol == 'ADMIN':
-            return Actuacion.objects.all().order_by('-created_at')
-        return Actuacion.objects.filter(usuario=self.request.user).order_by('-created_at')
+            return Actuacion.objects.filter(deleted_at__isnull=True).order_by('-created_at')
+        return Actuacion.objects.filter(usuario=self.request.user, deleted_at__isnull=True).order_by('-created_at')
 
 
 
@@ -47,28 +47,45 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        activos = Expediente.objects.filter(is_archivado=False, deleted_at__isnull=True)
+        user = self.request.user
+        
+        # Base query para expedientes no archivados
+        base_expedientes = Expediente.objects.filter(is_archivado=False, deleted_at__isnull=True)
+        
+        # Si es ADMIN, ve el total. Si no, solo lo suyo.
+        if user.rol != 'ADMIN':
+            base_expedientes = base_expedientes.filter(usuario=user)
+        
         context['counts'] = {
-            'despido': activos.filter(tipo_modulo='DESP').count(),
-            'inspectoria': activos.filter(tipo_modulo='INSP').count(),
-            'oficina': activos.filter(tipo_modulo='OFIC').count(),
-            'convenios': activos.filter(tipo_modulo='CONT').count(),
-            'litigios': activos.filter(tipo_modulo='LITI').count(),
-            'sustanciacion': activos.filter(tipo_modulo='SUST').count(),
-            'indices': activos.filter(tipo_modulo='IND').count(),
-            'actuaciones': Actuacion.objects.filter(deleted_at__isnull=True).count(),
+            'despido': base_expedientes.filter(tipo_modulo='DESP').count(),
+            'inspectoria': base_expedientes.filter(tipo_modulo='INSP').count(),
+            'oficina': base_expedientes.filter(tipo_modulo='OFIC').count(),
+            'convenios': base_expedientes.filter(tipo_modulo='CONT').count(),
+            'litigios': base_expedientes.filter(tipo_modulo='LITI').count(),
+            'sustanciacion': base_expedientes.filter(tipo_modulo='SUST').count(),
+            'indices': base_expedientes.filter(tipo_modulo='IND').count(),
+            'actuaciones': Actuacion.objects.filter(usuario=user if user.rol != 'ADMIN' else None, deleted_at__isnull=True).count(),
         }
-        context['historial_reciente'] = Expediente.objects.filter(
-            deleted_at__isnull=True
-        ).select_related('personal', 'usuario').order_by('-created_at')[:10]
+        
+        # Historial reciente: Filtrado por rol y solo activos
+        qs_historial = Expediente.objects.filter(deleted_at__isnull=True, is_archivado=False)
+        if user.rol != 'ADMIN':
+            qs_historial = qs_historial.filter(usuario=user)
+            
+        context['historial_reciente'] = qs_historial.select_related('personal', 'usuario').order_by('-created_at')[:10]
 
+        # Alertas de vencimiento
         hoy = timezone.now().date()
-        context['alertas_vencimiento'] = Expediente.objects.filter(
+        qs_alertas = Expediente.objects.filter(
             tipo_modulo='CONT', fecha_vencimiento__isnull=False,
             fecha_vencimiento__lte=hoy + timedelta(days=90),
             fecha_vencimiento__gte=hoy, is_archivado=False,
             deleted_at__isnull=True,
-        ).order_by('fecha_vencimiento')
+        )
+        if user.rol != 'ADMIN':
+            qs_alertas = qs_alertas.filter(usuario=user)
+            
+        context['alertas_vencimiento'] = qs_alertas.order_by('fecha_vencimiento')
 
         context['notificaciones_count'] = Notificacion.objects.filter(
             usuario=self.request.user, leido=False, deleted_at__isnull=True
@@ -123,7 +140,7 @@ class ExpedienteModuloListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         tipo = self.kwargs.get('tipo_modulo', 'DESP')
         queryset = Expediente.objects.for_user(self.request.user).filter(
-            tipo_modulo=tipo, deleted_at__isnull=True
+            tipo_modulo=tipo, deleted_at__isnull=True, is_archivado=False
         ).select_related('personal', 'motivo', 'cargo', 'tribunal', 'usuario')
         if tipo == 'SUST':
             queryset = queryset.prefetch_related(
@@ -200,22 +217,42 @@ class ExpedienteDetailView(LoginRequiredMixin, DetailView):
 class ExpedienteCreateView(LoginRequiredMixin, View):
     template_name = 'expedientes/expediente_form.html'
 
+    def get_template_names(self):
+        tipo_modulo = self.request.GET.get('tipo_modulo') or (self.object.tipo_modulo if hasattr(self, 'object') else 'DEFAULT')
+        templates = {
+            'DESP': 'expedientes/despido_form.html',
+            'INSP': 'expedientes/inspectoria_form.html',
+            'OFIC': 'expedientes/oficina_form.html',
+            'CONT': 'expedientes/convenio_form.html',
+            'LITI': 'expedientes/litigio_form.html',
+            'SUST': 'expedientes/sustanciacion_form.html',
+            'IND': 'expedientes/indice_form.html',
+        }
+        return [templates.get(tipo_modulo, 'expedientes/expediente_form.html')]
+
     def get(self, request):
+        # ... (keep get as is) ...
         initial = {}
         tipo_modulo = request.GET.get('tipo_modulo')
         if tipo_modulo:
             initial['tipo_modulo'] = tipo_modulo
-        form = ExpedienteForm(initial=initial)
-        return render(request, self.template_name, {
+        form_class = FORM_FACTORY.get(tipo_modulo, GeneralExpedienteForm)
+        form = form_class(initial=initial)
+        return render(request, self.get_template_names(), {
             'form': form, 'accion': 'Crear', 'tipo_modulo': tipo_modulo,
         })
 
+
     def post(self, request):
-        form = ExpedienteForm(request.POST)
         tipo_modulo = request.POST.get('tipo_modulo') or request.GET.get('tipo_modulo')
+        form_class = FORM_FACTORY.get(tipo_modulo, GeneralExpedienteForm)
+        form = form_class(request.POST)
         if form.is_valid():
             expediente = form.save(commit=False)
             expediente.usuario = request.user
+            # Asegurar que si el tipo_modulo viene en el POST se asigne
+            if tipo_modulo:
+                expediente.tipo_modulo = tipo_modulo
             expediente.save()
             
             # Log de creación
@@ -230,11 +267,17 @@ class ExpedienteCreateView(LoginRequiredMixin, View):
             if expediente.tipo_modulo:
                 return redirect('expedientes:modulo_list', tipo_modulo=expediente.tipo_modulo)
             return redirect('expedientes:expediente_detail', pk=expediente.pk)
+        else:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al crear expediente: {form.errors}")
+            messages.error(request, 'Error al guardar el expediente. Revise los campos marcados en rojo.')
         return render(request, self.template_name, {
             'form': form, 'accion': 'Crear', 'tipo_modulo': tipo_modulo,
         })
 
     def _crear_eventos_litigios(self, expediente):
+        # ... (keep this method same) ...
         if expediente.tipo_modulo != 'LITI':
             return
         if not expediente.fecha_demanda:
@@ -282,7 +325,8 @@ class ExpedienteUpdateView(LoginRequiredMixin, View):
             Expediente.objects.select_related('personal', 'cargo', 'motivo', 'tribunal'),
             pk=pk, deleted_at__isnull=True
         )
-        form = ExpedienteForm(instance=expediente)
+        form_class = FORM_FACTORY.get(expediente.tipo_modulo, GeneralExpedienteForm)
+        form = form_class(instance=expediente)
         return render(request, self.template_name, {
             'form': form, 'accion': 'Editar', 'expediente': expediente,
             'tipo_modulo': expediente.tipo_modulo,
@@ -290,9 +334,12 @@ class ExpedienteUpdateView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         expediente = get_object_or_404(Expediente, pk=pk, deleted_at__isnull=True)
-        form = ExpedienteForm(request.POST, instance=expediente)
+        form_class = FORM_FACTORY.get(expediente.tipo_modulo, GeneralExpedienteForm)
+        form = form_class(request.POST, instance=expediente)
         if form.is_valid():
+            # Guardamos explícitamente y comprobamos si los cambios se persisten
             form.save()
+            expediente.refresh_from_db()
             
             # Log de edición
             Actuacion.objects.create(
@@ -303,6 +350,12 @@ class ExpedienteUpdateView(LoginRequiredMixin, View):
             
             messages.success(request, 'Expediente actualizado.')
             return redirect('expedientes:expediente_detail', pk=expediente.pk)
+        else:
+            # Log de error si no es válido
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al editar expediente {pk}: {form.errors}")
+            messages.error(request, 'Error al actualizar el expediente. Revise los campos.')
         return render(request, self.template_name, {
             'form': form, 'accion': 'Editar', 'expediente': expediente,
             'tipo_modulo': expediente.tipo_modulo,
@@ -325,6 +378,25 @@ class ExpedienteDeleteView(LoginRequiredMixin, View):
         expediente.save(update_fields=['deleted_at'])
         messages.success(request, f'Expediente {numero_exp} eliminado lógicamente.')
         return redirect('expedientes:dashboard')
+
+class ExpedienteUpdateFaseView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        import json
+        expediente = get_object_or_404(Expediente, pk=pk, deleted_at__isnull=True)
+        data = json.loads(request.body)
+        nueva_fase = data.get('fase')
+        
+        if nueva_fase in dict(Expediente.FaseChoices.choices):
+            expediente.fase_actual = nueva_fase
+            expediente.save(update_fields=['fase_actual'])
+            
+            Actuacion.objects.create(
+                content_object=expediente,
+                descripcion=f"Fase actualizada a {expediente.get_fase_actual_display()} por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'error': 'Fase inválida'}, status=400)
 
 
 class ExpedienteArchivadosListView(LoginRequiredMixin, ListView):
@@ -516,6 +588,35 @@ class NotificacionMarcarLeidaView(LoginRequiredMixin, View):
         notif.save(update_fields=['leido'])
         return redirect('expedientes:notificacion_list')
 
+class NotificacionMarcarTodasLeidasView(LoginRequiredMixin, View):
+    def post(self, request):
+        Notificacion.objects.filter(usuario=request.user, leido=False, deleted_at__isnull=True).update(leido=True)
+        messages.success(request, 'Todas las notificaciones marcadas como leídas.')
+        return redirect('expedientes:notificacion_list')
+
+class NotificacionLimpiarTodasView(LoginRequiredMixin, View):
+    def post(self, request):
+        # Marcar como leídas y borradas lógicamente para asegurar que el contador se limpie
+        notificaciones = Notificacion.objects.filter(usuario=request.user, deleted_at__isnull=True)
+        now = timezone.now()
+        for n in notificaciones:
+            n.leido = True
+            n.deleted_at = now
+        Notificacion.objects.bulk_update(notificaciones, ['leido', 'deleted_at'])
+        messages.success(request, 'Historial de notificaciones limpiado.')
+        return redirect('expedientes:notificacion_list')
+
+class ActuacionLimpiarTodasView(LoginRequiredMixin, View):
+    def post(self, request):
+        # El administrador puede limpiar todo, otros usuarios solo lo suyo
+        if request.user.rol == 'ADMIN':
+            Actuacion.objects.all().delete()
+        else:
+            Actuacion.objects.filter(usuario=request.user).delete()
+        messages.success(request, 'Historial de actuaciones limpiado.')
+        return redirect('expedientes:actuacion_list')
+
+
 
 class CargoListView(LoginRequiredMixin, ListView):
     model = Cargo
@@ -523,7 +624,28 @@ class CargoListView(LoginRequiredMixin, ListView):
     context_object_name = 'cargos'
     paginate_by = 20
     def get_queryset(self):
-        return Cargo.objects.filter(deleted_at__isnull=True)
+        # Prefetch de las asignaciones activas para mostrar quién tiene el cargo
+        from .models import PersonaCargo
+        qs = Cargo.objects.filter(deleted_at__isnull=True).prefetch_related(
+            Prefetch(
+                'personacargo_set',
+                queryset=PersonaCargo.objects.filter(es_cargo_actual=True, deleted_at__isnull=True).select_related('personal'),
+                to_attr='asignaciones_actuales'
+            )
+        )
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(
+                models.Q(descripcion__icontains=q) |
+                models.Q(personacargo__personal__nombres__icontains=q) |
+                models.Q(personacargo__personal__apellidos__icontains=q)
+            ).distinct()
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['search_query'] = self.request.GET.get('q', '')
+        return ctx
 
 class CargoCreateView(LoginRequiredMixin, View):
     template_name = 'expedientes/cargo_form.html'
@@ -568,17 +690,15 @@ class MotivoListView(LoginRequiredMixin, ListView):
     context_object_name = 'motivos'
     paginate_by = 20
     def get_queryset(self):
-        # Filtramos motivos activos y precargamos expedientes y su personal asociado
+        # Filtramos motivos activos y precargamos expedientes con su personal asociado
         qs = Motivo.objects.filter(deleted_at__isnull=True).prefetch_related('expediente_set__personal')
         
         q = self.request.GET.get('q', '').strip()
         if q:
-            # Búsqueda por descripción, tipo, o nombre/apellido del personal vinculado
+            # Búsqueda por descripción o tipo
             qs = qs.filter(
-                models.Q(descripcion__icontains=q) | 
-                models.Q(tipo__icontains=q) |
-                models.Q(expediente__personal__nombres__icontains=q) |
-                models.Q(expediente__personal__apellidos__icontains=q)
+                models.Q(descripcion__icontains=q) |
+                models.Q(tipo__icontains=q)
             ).distinct()
         return qs
 
@@ -674,12 +794,18 @@ class NotificacionListView(LoginRequiredMixin, ListView):
     template_name = 'expedientes/notificacion_list.html'
     context_object_name = 'notificaciones'
     paginate_by = 20
+
+    def get(self, request, *args, **kwargs):
+        # Marcar todas como leídas al entrar
+        Notificacion.objects.filter(usuario=self.request.user, leido=False, deleted_at__isnull=True).update(leido=True)
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         return Notificacion.objects.filter(usuario=self.request.user, deleted_at__isnull=True).order_by('-fecha_creacion')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['no_leidas'] = Notificacion.objects.filter(usuario=self.request.user, leido=False, deleted_at__isnull=True).count()
+        context['no_leidas'] = 0 # Siempre 0 porque ya las marcamos como leídas
         return context
 
 
@@ -1075,7 +1201,8 @@ class ExpedienteArchivarView(LoginRequiredMixin, View):
     def post(self, request, pk):
         expediente = get_object_or_404(Expediente, pk=pk, deleted_at__isnull=True)
         expediente.is_archivado = True
-        expediente.save(update_fields=['is_archivado'])
+        expediente.estatus = 'ARCHIVADO'
+        expediente.save(update_fields=['is_archivado', 'estatus'])
         messages.success(request, f'Expediente {expediente.numero_expediente} archivado.')
         Actuacion.objects.create(
             content_object=expediente,
@@ -1089,8 +1216,16 @@ class ExpedienteDesarchivarView(LoginRequiredMixin, View):
     def post(self, request, pk):
         expediente = get_object_or_404(Expediente, pk=pk, deleted_at__isnull=True)
         expediente.is_archivado = False
-        expediente.save(update_fields=['is_archivado'])
+        if expediente.estatus == 'ARCHIVADO':
+            expediente.estatus = 'RECIBIDO'
+        expediente.save(update_fields=['is_archivado', 'estatus'])
         messages.success(request, f'Expediente {expediente.numero_expediente} desarchivado.')
+        Actuacion.objects.create(
+            content_object=expediente,
+            descripcion=f"Expediente {expediente.numero_expediente} desarchivado por {request.user.get_full_name()}",
+            usuario=request.user,
+        )
+        return redirect('expedientes:expediente_detail', pk=pk)
         Actuacion.objects.create(
             content_object=expediente,
             descripcion=f"Expediente {expediente.numero_expediente} desarchivado por {request.user.get_full_name()}",

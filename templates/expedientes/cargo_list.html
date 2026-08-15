@@ -5,31 +5,17 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0"><i class="bi bi-briefcase me-2"></i>Cargos</h5>
         <div class="d-flex gap-2">
-            <div class="dropdown d-inline-block">
-                <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Excel
-                </button>
-                <ul class="dropdown-menu shadow-sm">
-                    <li>
-                        <form method="post" action="{% url 'expedientes:importar_excel' 'Cargo' %}" enctype="multipart/form-data" class="m-0 px-3 py-1">
-                            {% csrf_token %}
-                            <label class="dropdown-item p-0 m-0 text-dark" style="cursor: pointer;"><i class="bi bi-upload me-2 text-warning"></i>Importar
-                                <input type="file" name="archivo" accept=".xlsx,.xls" hidden onchange="this.form.submit()">
-                            </label>
-                        </form>
-                    </li>
-                    <li>
-                        <a class="dropdown-item text-dark" href="{% url 'expedientes:exportar_cargos' %}"><i class="bi bi-download me-2 text-success"></i>Exportar</a>
-                    </li>
-                </ul>
-            </div>
+            <form method="get" class="d-flex">
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar cargo..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm ms-1"><i class="bi bi-search"></i></button>
+            </form>
             <a href="{% url 'expedientes:cargo_create' %}" class="btn btn-dark btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo Cargo</a>
         </div>
     </div>
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark"><tr><th>Categoría</th><th>Tipo</th><th>Marco Legal</th><th>Acciones</th></tr></thead>
+                <thead class="table-dark"><tr><th>Categoría</th><th>Tipo</th><th>Marco Legal</th><th>Asignado a</th><th>Acciones</th></tr></thead>
                 <tbody>
                     {% for c in cargos %}
                     <tr>
@@ -37,11 +23,18 @@
                         <td>{{ c.get_tipo_display }}</td>
                         <td><small>{{ c.marco_legal }}</small></td>
                         <td>
+                            {% for pc in c.asignaciones_actuales %}
+                                <span class="badge bg-info text-dark">{{ pc.personal.nombres }} {{ pc.personal.apellidos }}</span>
+                            {% empty %}
+                                <span class="text-muted small">Sin asignar</span>
+                            {% endfor %}
+                        </td>
+                        <td>
                             <a href="{% url 'expedientes:cargo_update' c.pk %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
                             <form method="post" action="{% url 'expedientes:cargo_delete' c.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este cargo?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button></form>
                         </td>
                     </tr>
-                    {% empty %}<tr><td colspan="4" class="text-center text-muted py-4">No hay cargos registrados.</td></tr>
+                    {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No hay cargos registrados.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

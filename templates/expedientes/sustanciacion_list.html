@@ -49,7 +49,6 @@
 <th>Cédula</th>
 <th>Cargo</th>
 <th>Motivo</th>
-<th>Tribunal</th>
 <th>Fecha Notif.</th>
 <th>Hora</th>
 <th>Lugar</th>
@@ -65,23 +64,26 @@
 <td>{{ notif.personal.cedula|default:exp.personal.cedula|default:"-" }}</td>
 <td>{{ exp.cargo.descripcion|default:"-" }}</td>
 <td>{{ exp.motivo.descripcion|default:"-" }}</td>
-<td>{{ exp.tribunal.nombre|default:"-" }}</td>
-<td>{{ notif.fecha|date:"d/m/Y"|default:"-" }}</td>
-<td>{{ notif.hora|time:"H:i"|default:"-" }}</td>
-<td>{{ notif.lugar|default:"-" }}</td>
+<td>{{ notif.fecha|date:"d/m/Y"|default:exp.fecha_registro|date:"d/m/Y"|default:"-" }}</td>
+<td>{{ notif.hora|time:"H:i"|default:exp.hora_procedimiento|time:"H:i"|default:"-" }}</td>
+<td>{{ notif.lugar|default:exp.lugar_procedimiento|default:"-" }}</td>
 <td>
-    {% if notif.firma_digital_hash %}
-        <span class="font-monospace small" title="{{ notif.firma_digital_hash }}">{{ notif.firma_digital_hash|truncatechars:16 }}</span>
+    {% with firma=notif.firma_digital_hash|default:exp.firma_digital_hash %}
+    {% if firma %}
+        <span class="font-monospace small" title="{{ firma }}">{{ firma|truncatechars:16 }}</span>
     {% else %}
         <span class="text-muted">-</span>
     {% endif %}
+    {% endwith %}
 </td>
 <td>
-    {% if notif.huella_digital_hash %}
-        <span class="font-monospace small">{{ notif.huella_digital_hash|truncatechars:12 }}</span>
+    {% with huella=notif.huella_digital_hash|default:exp.huella_digital_hash %}
+    {% if huella %}
+        <span class="font-monospace small">{{ huella|truncatechars:12 }}</span>
     {% else %}
         <span class="text-muted">-</span>
     {% endif %}
+    {% endwith %}
 </td>
 <td>
     <span class="badge {% if exp.fase_actual == 'INICIO' %}bg-primary{% elif exp.fase_actual == 'PRUEBAS' %}bg-warning text-dark{% elif exp.fase_actual == 'CONCL' %}bg-success{% else %}bg-secondary{% endif %} phase-badge">

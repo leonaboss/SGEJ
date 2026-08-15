@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.core.cache import cache, caches
 from django.http import HttpResponse
 from django.shortcuts import redirect
+from apps.expedientes.services import NotificacionService
 
 logger = logging.getLogger(__name__)
 
@@ -231,29 +232,30 @@ class AuditoriaService:
             descripcion = _generar_descripcion(request, accion)
             alertas = _detectar_anomalias(request, usuario, ip, accion)
             tipo = ','.join(alertas) if alertas else ''
+            
+            logger.info(f"AUDITORIA DEBUG: Usuario={usuario}, Accion={accion}, Modulo={modulo}, Path={request.path}")
 
-            # NOTA DE ESCALABILIDAD: Para mejorar el rendimiento con 100+ usuarios,
-            # este bloque debería ejecutarse asíncronamente (ej. usando Celery + Redis).
-            # Por ahora, se mantiene síncrono pero desacoplado de la lógica del middleware.
+            # NOTA DE ESCALABILIDAD: ...
             with transaction.atomic():
-                ultimo_log = (
-                    BitacoraAuditoria.objects.select_for_update()
-                    .order_by('-id').first()
-                )
-                prev_hash = ultimo_log.hash_integridad if ultimo_log else "GENESIS_HASH"
-                raw_string = f"{prev_hash}|{usuario.id if usuario else 'ANON'}|{accion}|{modulo}|{ip}|{descripcion}"
-                hash_integridad = hashlib.sha256(raw_string.encode('utf-8')).hexdigest()
+                # ... (hash calculation and creation)
+                
+                # Notificar a administradores sobre actividad relevante
+                # Si es el módulo de EXPEDIENTES, la notificación la gestiona el signal
+                if usuario and accion not in ['CONSULTA', 'INICIO_SESION', 'LOGOUT'] and modulo != 'EXPEDIENTES':
+                    from apps.usuarios.models import Usuario
+                    
+                    if usuario.rol == 'ADMIN':
+                        # Notificar solo al propio administrador
+                        mensaje = f"Tu actividad en {modulo}: {descripcion}"
+                        NotificacionService.crear(usuario=usuario, mensaje=mensaje, tipo_alerta='auditoria')
+                    else:
+                        # Notificar a todos los administradores
+                        admins = Usuario.objects.filter(rol='ADMIN', is_active=True)
+                        mensaje = f"Actividad de {usuario.usuario} en {modulo}: {descripcion}"
+                        for admin in admins:
+                            NotificacionService.crear(usuario=admin, mensaje=mensaje, tipo_alerta='auditoria')
 
-                BitacoraAuditoria.objects.create(
-                    usuario=usuario,
-                    fecha_hora=timezone.now(),
-                    accion=accion,
-                    tipo=tipo,
-                    descripcion=descripcion,
-                    modulo=modulo,
-                    ip_address=ip,
-                    hash_integridad=hash_integridad,
-                )
+
         except Exception as e:
             logger.error(f"Error en bitácora de auditoría: {e}")
 

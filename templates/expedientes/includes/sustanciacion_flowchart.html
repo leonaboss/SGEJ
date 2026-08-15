@@ -1,0 +1,45 @@
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom-0">
+        <h6 class="fw-bold mb-0">Flujo de Sustanciación</h6>
+    </div>
+    <div class="card-body">
+        <div id="flowchart" class="mermaid" style="display:none;">
+            graph LR
+                A[Auto de Inicio] --> B[Periodo Probatorio]
+                B --> C[Conclusiones]
+        </div>
+        <!-- Renderizado alternativo mediante botones -->
+        <div class="btn-group w-100" role="group">
+            <button type="button" class="btn {% if expediente.fase_actual == 'INICIO' %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="updateFase('INICIO')">Auto de Inicio</button>
+            <button type="button" class="btn {% if expediente.fase_actual == 'PRUEBAS' %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="updateFase('PRUEBAS')">Periodo Probatorio</button>
+            <button type="button" class="btn {% if expediente.fase_actual == 'CONCL' %}btn-primary{% else %}btn-outline-secondary{% endif %}" onclick="updateFase('CONCL')">Conclusiones</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.updateFase = async function(fase) {
+        if (!confirm('¿Desea cambiar la fase del expediente a ' + fase + '?')) return;
+        
+        try {
+            const response = await fetch("{% url 'expedientes:expediente_update_fase' expediente.pk %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ fase: fase })
+            });
+            
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const errorData = await response.json();
+                alert('Error al actualizar la fase: ' + (errorData.error || 'Desconocido'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al conectar con el servidor');
+        }
+    }
+</script>

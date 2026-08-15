@@ -196,13 +196,13 @@ class Expediente(models.Model):
 
     numero_expediente = models.CharField(max_length=50, unique=True)
     numero_expediente_relativo = models.CharField(max_length=50, blank=True, null=True)
-    cedula = models.CharField(max_length=20, verbose_name="Cédula")
+    cedula = models.CharField(max_length=20, blank=True, null=True, verbose_name="Cédula")
     tipo_modulo = models.TextField(choices=ModuloChoices.choices)
     usuario = models.ForeignKey(
         'usuarios.Usuario', on_delete=models.PROTECT, db_column='usuario_id'
     )
     personal = models.ForeignKey(
-        Personal, on_delete=models.PROTECT, db_column='personal_id'
+        Personal, on_delete=models.PROTECT, blank=True, null=True, db_column='personal_id'
     )
     motivo = models.ForeignKey(
         Motivo, on_delete=models.PROTECT, blank=True, null=True, db_column='motivo_id'

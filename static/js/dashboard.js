@@ -81,13 +81,23 @@ const SgejDashboard = (() => {
   function initializeTableSearch(inputId, tableId) {
     const input = document.getElementById(inputId);
     const table = document.getElementById(tableId);
-    if (!input || !table) return;
+    
+    if (!input || !table) {
+        console.error('[SGEJ] Elementos de búsqueda no encontrados:', { inputId, tableId });
+        return;
+    }
+
+    console.log('[SGEJ] Búsqueda inicializada para:', inputId);
 
     input.addEventListener('input', function () {
       const query = this.value.toLowerCase().trim();
+      console.log('[SGEJ] Buscando:', query);
       const rows = table.querySelectorAll('tbody tr');
 
       rows.forEach((row) => {
+        // Excluir la fila de "No hay actividad" si existe
+        if (row.querySelector('.sgej-empty-state')) return;
+
         const text = row.textContent.toLowerCase();
         row.style.display = text.includes(query) ? '' : 'none';
       });

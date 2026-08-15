@@ -11,6 +11,7 @@ urlpatterns = [
     path('expediente/<int:pk>/', views.ExpedienteDetailView.as_view(), name='expediente_detail'),
     path('expediente/crear/', views.ExpedienteCreateView.as_view(), name='expediente_create'),
     path('expediente/editar/<int:pk>/', views.ExpedienteUpdateView.as_view(), name='expediente_update'),
+    path('expediente/<int:pk>/actualizar-fase/', views.ExpedienteUpdateFaseView.as_view(), name='expediente_update_fase'),
     path('expediente/eliminar/<int:pk>/', views.ExpedienteDeleteView.as_view(), name='expediente_delete'),
     path('expediente/<int:pk>/archivar/', views.ExpedienteArchivarView.as_view(), name='expediente_archivar'),
     path('expediente/<int:pk>/desarchivar/', views.ExpedienteDesarchivarView.as_view(), name='expediente_desarchivar'),
@@ -20,6 +21,7 @@ urlpatterns = [
     path('actuaciones/', views.ActuacionListView.as_view(), name='actuacion_list'),
     path('actuaciones/editar/<int:pk>/', views.ActuacionUpdateView.as_view(), name='actuacion_update'),
     path('actuaciones/eliminar/<int:pk>/', views.ActuacionDeleteView.as_view(), name='actuacion_delete'),
+    path('actuaciones/limpiar-todas/', views.ActuacionLimpiarTodasView.as_view(), name='actuacion_limpiar_todas'),
     path('expediente/<int:expediente_pk>/actuacion/crear/', views.ActuacionCreateView.as_view(), name='actuacion_create'),
     path('expediente/<int:expediente_pk>/audiencia/crear/', views.AudienciaAgendaCreateView.as_view(), name='audiencia_create'),
 
@@ -66,6 +68,8 @@ urlpatterns = [
     path('tribunales/eliminar/<int:pk>/', views.TribunalDeleteView.as_view(), name='tribunal_delete'),
 
     path('notificaciones/', views.NotificacionListView.as_view(), name='notificacion_list'),
+    path('notificaciones/marcar-todas-leidas/', views.NotificacionMarcarTodasLeidasView.as_view(), name='notificacion_marcar_todas_leidas'),
+    path('notificaciones/limpiar-todas/', views.NotificacionLimpiarTodasView.as_view(), name='notificacion_limpiar_todas'),
 
     path('exportar/expedientes/', views.ExportarExpedientesExcelView.as_view(), name='exportar_expedientes'),
     path('exportar/personal/', views.ExportarPersonalExcelView.as_view(), name='exportar_personal'),

@@ -3,12 +3,14 @@
 {% block module_title %}Gestión de Litigios{% endblock %}
 {% block search_placeholder %}Buscar por Demanda...{% endblock %}
 {% block table_headers %}
+<th>N° de Litigio</th>
 <th>Tipo de Demanda</th>
 <th>Fecha de Demanda</th>
 <th>Estatus</th>
 <th>Tribunal</th>
 {% endblock %}
 {% block table_cells %}
+<td><span class="fw-semibold">{{ exp.numero_expediente }}</span></td>
 <td>{{ exp.tipo_demanda|default:"-" }}</td>
 <td>{{ exp.fecha_demanda|date:"d M Y"|default:"-" }}</td>
 <td>{% include 'components/estatus_badge.html' with estatus=exp.estatus %}</td>
