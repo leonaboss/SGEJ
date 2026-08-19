@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Política de Privacidad | SGEJ{% endblock %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4"><i class="bi bi-shield-check"></i> Política de Privacidad</h2>
+                    <p>En el <strong>Sistema de Gestor de Expedientes Jurídicos (SGEJ)</strong>, la seguridad y confidencialidad de su información son nuestra prioridad.</p>
+                    
+                    <h5>1. Protección de Datos</h5>
+                    <p>Toda la información ingresada en el sistema es tratada con estrictos controles de seguridad. Utilizamos cifrado de grado industrial para garantizar que sus datos permanezcan privados.</p>
+                    
+                    <h5>2. Acceso de Terceros</h5>
+                    <p>Garantizamos que sus datos <strong>no son compartidos, vendidos ni accesibles para terceros</strong> bajo ninguna circunstancia. El sistema opera en un entorno cerrado y privado, diseñado exclusivamente para el uso autorizado de los funcionarios del sistema.</p>
+                    
+                    <h5>3. Seguridad</h5>
+                    <p>Implementamos múltiples capas de autenticación, bitácoras de auditoría inmutables y protocolos de transporte seguro (HTTPS/TLS) para blindar su información contra accesos no autorizados.</p>
+                    
+                    <hr>
+                    <p class="text-muted small">Última actualización: {{ now|date:"d/m/Y" }}</p>
+                    <a href="javascript:history.back()" class="btn btn-outline-primary">Volver</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -138,8 +138,7 @@ class Setup2FAView(LoginRequiredMixin, View):
                 user=request.user,
                 name=f"{request.user.usuario}_totp",
                 confirmed=False,
-                tolerance=1,
-                ttl=30
+                tolerance=1
             )
             otp_url = new_device.config_url
             qr = qrcode.make(otp_url)
@@ -805,3 +804,9 @@ class ImportarUsuariosExcelView(LoginRequiredMixin, View):
         except Exception as e:
             messages.error(request, f'Error al importar: {e}')
         return redirect('usuarios:usuario_list')
+
+
+class PrivacyPolicyView(View):
+    template_name = 'privacy_policy.html'
+    def get(self, request):
+        return render(request, self.template_name)

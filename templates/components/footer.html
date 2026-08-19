@@ -1,0 +1,16 @@
+<footer class="footer mt-auto py-3 bg-light border-top">
+    <div class="container text-center">
+        <span class="text-muted">
+            &copy; {% now "Y" %} SGEJ - Sistema de Gestor de Expedientes Jurídicos.
+        </span>
+        <div class="mt-2">
+            <a href="{% url 'usuarios:privacy_policy' %}" class="text-decoration-none text-muted small">
+                <i class="bi bi-shield-lock"></i> Política de Privacidad
+            </a>
+            <span class="mx-2 text-muted">|</span>
+            <span class="text-muted small">
+                <i class="bi bi-lock"></i> Conexión Segura (TLS)
+            </span>
+        </div>
+    </div>
+</footer>

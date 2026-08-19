@@ -25,4 +25,5 @@ urlpatterns = [
     path('exportar/usuarios/', views.ExportarUsuariosExcelView.as_view(), name='exportar_usuarios'),
     path('importar/usuarios/', views.ImportarUsuariosExcelView.as_view(), name='importar_usuarios'),
     path('bitacora/', views.BitacoraListView.as_view(), name='bitacora_list'),
+    path('politica-privacidad/', views.PrivacyPolicyView.as_view(), name='privacy_policy'),
 ]
