@@ -5,6 +5,9 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0"><i class="bi bi-building me-2"></i>Tribunales</h5>
         <div class="d-flex gap-2">
+            <div class="d-flex">
+                <input type="text" id="search-input" class="form-control form-control-sm" placeholder="Buscar tribunal...">
+            </div>
             <div class="dropdown d-inline-block">
                 <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-file-earmark-excel me-1"></i>Excel
@@ -28,7 +31,7 @@
     </div>
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table id="tribunal-table" class="table table-hover align-middle mb-0">
                 <thead class="table-dark"><tr><th>Nombre</th><th>Tipo</th><th>Acciones</th></tr></thead>
                 <tbody>
                     {% for t in tribunales %}
@@ -47,4 +50,11 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeTableSearch('search-input', 'tribunal-table');
+    });
+</script>
 {% endblock %}

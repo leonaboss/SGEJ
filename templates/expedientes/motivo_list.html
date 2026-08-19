@@ -5,16 +5,15 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Motivos</h5>
         <div class="d-flex gap-2">
-            <form method="get" class="d-flex">
-                <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar motivo/tipo..." value="{{ search_query }}">
-                <button type="submit" class="btn btn-outline-secondary btn-sm ms-1"><i class="bi bi-search"></i></button>
-            </form>
+            <div class="d-flex">
+                <input type="text" id="search-input" class="form-control form-control-sm" placeholder="Buscar motivo/tipo...">
+            </div>
             <a href="{% url 'expedientes:motivo_create' %}" class="btn btn-dark btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo Motivo</a>
         </div>
     </div>
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table id="motivo-table" class="table table-hover align-middle mb-0">
                 <thead class="table-dark"><tr><th>Descripción</th><th>Tipo</th><th>Asignado a</th><th>Acciones</th></tr></thead>
                 <tbody>
                     {% for m in motivos %}
@@ -42,4 +41,11 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeTableSearch('search-input', 'motivo-table');
+    });
+</script>
 {% endblock %}

@@ -33,7 +33,7 @@
         <div class="card-body">
             <form method="get" class="row g-2 mb-3">
                 <div class="col-md-6">
-                    <input type="text" name="q" class="form-control" placeholder="Buscar por título..." value="{{ search_query }}">
+                    <input type="text" id="search-input" name="q" class="form-control" placeholder="Buscar por título..." value="{{ search_query }}">
                 </div>
                 <div class="col-md-4">
                     <select name="tipo" class="form-select">
@@ -48,7 +48,7 @@
                 </div>
             </form>
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table id="biblioteca-table" class="table table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
                             <th>Título</th>
@@ -96,4 +96,11 @@
     </div>
 </div>
 {% include 'biblioteca/components/help_modal.html' %}
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeTableSearch('search-input', 'biblioteca-table');
+    });
+</script>
 {% endblock %}
