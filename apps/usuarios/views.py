@@ -521,10 +521,8 @@ class RegisterView(View):
         form = RegistroUsuarioForm(request.POST, roles_filter=self.get_roles_disponibles())
         if form.is_valid():
             usuario = form.save()
-            from django.contrib.auth import login
-            login(request, usuario)
-            messages.success(request, f'Cuenta creada exitosamente. ¡Bienvenido {usuario.usuario}!')
-            return redirect('expedientes:dashboard')
+            messages.success(request, f'Cuenta creada exitosamente. Inicie sesión.')
+            return redirect('usuarios:login')
         return render(request, self.template_name, {
             'form': form, 'es_primero': Usuario.objects.count() == 0,
         })

@@ -1,7 +1,8 @@
 from django.db import models
-
+from apps.expedientes.models import BaseManager
 
 class ModuloBiblioteca(models.Model):
+    objects = BaseManager()
     """Repositorio de normativa legal: reglamentos, gacetas, resoluciones."""
     class ModuloChoices(models.TextChoices):
         DESP = 'DESP', 'Calificación de Despido / Recientes'
@@ -22,6 +23,10 @@ class ModuloBiblioteca(models.Model):
     titulo = models.CharField(max_length=255)
     tipo_normativa = models.TextField(choices=TIPOS)
     fecha_publicacion = models.DateField()
+    usuario = models.ForeignKey(
+        'usuarios.Usuario', on_delete=models.CASCADE, db_column='usuario_id',
+        null=True, blank=True, verbose_name='Usuario creador'
+    )
     deleted_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

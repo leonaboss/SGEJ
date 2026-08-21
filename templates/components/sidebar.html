@@ -32,14 +32,14 @@
             </a>
             <div class="collapse {% if request.resolver_match.url_name in 'modulo_list,calendario_lapsos' %}show{% endif %}" id="collapseExpedientes">
                 <ul class="list-unstyled pb-1 ps-3 mb-0">
-                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="DESP" icon="bi bi-person-x-fill" label="Calificación de Despido" active_module="modulo/DESP" required_roles="ADMIN,ABOG" %}
-                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="INSP" icon="bi bi-briefcase-fill" label="Inspectoría del Trabajo" active_module="modulo/INSP" required_roles="ADMIN,ABOG" %}
-                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="OFIC" icon="bi bi-folder-fill" label="Oficina Jurídica" active_module="modulo/OFIC" required_roles="ADMIN,ABOG" %}
-                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="CONT" icon="bi bi-journal-text" label="Convenios UPTAG" active_module="modulo/CONT" required_roles="ADMIN,ABOG" %}
-                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="LITI" icon="bi bi-bank" label="Litigios" active_module="modulo/LITI" required_roles="ADMIN,ABOG" %}
-                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="SUST" icon="bi bi-shield-exclamation" label="Sustanciación" active_module="modulo/SUST" required_roles="ADMIN,ABOG" %}
-                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="IND" icon="bi bi-list-check" label="Índices Inspectoría" active_module="modulo/IND" required_roles="ADMIN,ABOG" %}
-                    {% sidebar_item url="expedientes:calendario_lapsos" icon="bi bi-calendar-range" label="Lapsos y Agenda Procesal" active_module="calendario" required_roles="ADMIN,ABOG" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="DESP" icon="bi bi-person-x-fill" label="Calificación de Despido" active_module="modulo/DESP" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="INSP" icon="bi bi-briefcase-fill" label="Inspectoría del Trabajo" active_module="modulo/INSP" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="OFIC" icon="bi bi-folder-fill" label="Oficina Jurídica" active_module="modulo/OFIC" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="CONT" icon="bi bi-journal-text" label="Convenios UPTAG" active_module="modulo/CONT" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="LITI" icon="bi bi-bank" label="Litigios" active_module="modulo/LITI" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="SUST" icon="bi bi-shield-exclamation" label="Sustanciación" active_module="modulo/SUST" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
+                    {% sidebar_item url="expedientes:modulo_list" tipo_modulo="IND" icon="bi bi-list-check" label="Índices Inspectoría" active_module="modulo/IND" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
+                    {% sidebar_item url="expedientes:calendario_lapsos" icon="bi bi-calendar-range" label="Lapsos y Agenda Procesal" active_module="calendario" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
                 </ul>
             </div>
         </li>

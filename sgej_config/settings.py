@@ -61,6 +61,7 @@ INSTALLED_APPS = [
 # Middleware
 # ============================================
 MIDDLEWARE = [
+    'apps.infraestructura.middleware.SecurityInspectionMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

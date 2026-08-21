@@ -11,9 +11,12 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 class BaseQuerySet(models.QuerySet):
     """QuerySet base para aislamiento de datos."""
     def for_user(self, user):
-        if user.is_authenticated and user.rol == 'ADMIN':
+        if not user.is_authenticated:
+            return self.none()
+        if user.rol == 'ADMIN':
             return self
-        return self.filter(usuario=user)
+        # Fuerza explícita sobre el ID del usuario
+        return self.filter(usuario_id=user.pk)
 
 class UsuarioManager(BaseUserManager):
     """Manager personalizado que usa 'usuario' como campo de login."""
@@ -52,7 +55,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     telefono = models.CharField(max_length=50, blank=True, null=True)
     personal = models.ForeignKey(
         'expedientes.Personal', on_delete=models.PROTECT,
-        db_column='personal_id', blank=True, null=True
+        db_column='personal_id', blank=True, null=True, related_name='usuario_asociado'
     )
     rol = models.CharField(max_length=12, choices=ROLES, default='USR_PUBLICO')
     foto_perfil = models.ImageField(
@@ -83,8 +86,14 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         ordering = ['-created_at']
 
     def get_full_name(self):
+        # Si es Administrador, siempre mostramos el username (o un nombre definido por nosotros)
+        if self.rol == 'ADMIN':
+            return self.usuario
+        
+        # Para otros usuarios, si tienen un personal vinculado, usamos su nombre
         if self.personal_id:
             return self.personal.get_full_name()
+        
         return self.usuario
 
     def get_short_name(self):

@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.utils import timezone
 from .models import ModuloBiblioteca
 from .forms import ModuloBibliotecaForm
+from apps.expedientes.models import Actuacion
 
 class BibliotecaListView(LoginRequiredMixin, ListView):
     model = ModuloBiblioteca
@@ -14,7 +15,7 @@ class BibliotecaListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = ModuloBiblioteca.objects.filter(deleted_at__isnull=True)
+        qs = ModuloBiblioteca.objects.for_user(self.request.user).filter(deleted_at__isnull=True)
         q = self.request.GET.get('q', '').strip()
         if q:
             qs = qs.filter(titulo__icontains=q)
@@ -40,7 +41,14 @@ class BibliotecaCreateView(LoginRequiredMixin, View):
     def post(self, request):
         form = ModuloBibliotecaForm(request.POST)
         if form.is_valid():
-            form.save()
+            normativa = form.save(commit=False)
+            normativa.usuario = request.user
+            normativa.save()
+            Actuacion.objects.create(
+                content_object=normativa,
+                descripcion=f"Normativa '{normativa.titulo}' creada por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
             messages.success(request, 'Normativa registrada exitosamente.')
             return redirect('biblioteca:lista')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
@@ -58,6 +66,11 @@ class BibliotecaUpdateView(LoginRequiredMixin, View):
         form = ModuloBibliotecaForm(request.POST, instance=obj)
         if form.is_valid():
             form.save()
+            Actuacion.objects.create(
+                content_object=obj,
+                descripcion=f"Normativa '{obj.titulo}' actualizada por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
             messages.success(request, 'Normativa actualizada exitosamente.')
             return redirect('biblioteca:lista')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar'})
@@ -65,6 +78,11 @@ class BibliotecaUpdateView(LoginRequiredMixin, View):
 class BibliotecaDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk):
         obj = ModuloBiblioteca.objects.get(pk=pk, deleted_at__isnull=True)
+        Actuacion.objects.create(
+            content_object=obj,
+            descripcion=f"Normativa '{obj.titulo}' eliminada por {request.user.get_full_name()}",
+            usuario=request.user,
+        )
         obj.deleted_at = timezone.now()
         obj.save(update_fields=['deleted_at'])
         messages.success(request, 'Normativa eliminada lógicamente.')

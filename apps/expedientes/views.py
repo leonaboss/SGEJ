@@ -25,6 +25,7 @@ from .forms import (
 )
 from .services import AlertasService
 from apps.infraestructura.services import ImportExportService
+from apps.infraestructura.mixins import AdminRequiredMixin
 
 # ─── Actuacion List View (Auditoria General) ──────────────────────────────────
 
@@ -556,7 +557,9 @@ class PersonalCreateView(LoginRequiredMixin, View):
     def post(self, request):
         form = PersonalForm(request.POST)
         if form.is_valid():
-            personal = form.save()
+            personal = form.save(commit=False)
+            personal.usuario = request.user
+            personal.save()
             messages.success(request, f'Personal {personal.get_full_name()} registrado.')
             return redirect('expedientes:personal_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
@@ -569,7 +572,7 @@ class PersonalListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = Personal.objects.filter(deleted_at__isnull=True)
+        qs = Personal.objects.for_user(self.request.user).filter(deleted_at__isnull=True)
         q = self.request.GET.get('q', '').strip()
         if q:
             qs = qs.filter(Q(nombres__icontains=q) | Q(apellidos__icontains=q) | Q(cedula__icontains=q))
@@ -626,7 +629,7 @@ class CargoListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Prefetch de las asignaciones activas para mostrar quién tiene el cargo
         from .models import PersonaCargo
-        qs = Cargo.objects.filter(deleted_at__isnull=True).prefetch_related(
+        qs = Cargo.objects.for_user(self.request.user).filter(deleted_at__isnull=True).prefetch_related(
             Prefetch(
                 'personacargo_set',
                 queryset=PersonaCargo.objects.filter(es_cargo_actual=True, deleted_at__isnull=True).select_related('personal'),
@@ -655,7 +658,9 @@ class CargoCreateView(LoginRequiredMixin, View):
     def post(self, request):
         form = CargoForm(request.POST)
         if form.is_valid():
-            form.save()
+            cargo = form.save(commit=False)
+            cargo.usuario = request.user
+            cargo.save()
             messages.success(request, 'Cargo registrado exitosamente.')
             return redirect('expedientes:cargo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
@@ -691,7 +696,7 @@ class MotivoListView(LoginRequiredMixin, ListView):
     paginate_by = 20
     def get_queryset(self):
         # Filtramos motivos activos y precargamos expedientes con su personal asociado
-        qs = Motivo.objects.filter(deleted_at__isnull=True).prefetch_related('expediente_set__personal')
+        qs = Motivo.objects.for_user(self.request.user).filter(deleted_at__isnull=True).prefetch_related('expediente_set__personal')
         
         q = self.request.GET.get('q', '').strip()
         if q:
@@ -715,7 +720,9 @@ class MotivoCreateView(LoginRequiredMixin, View):
     def post(self, request):
         form = MotivoForm(request.POST)
         if form.is_valid():
-            form.save()
+            motivo = form.save(commit=False)
+            motivo.usuario = request.user
+            motivo.save()
             messages.success(request, 'Motivo registrado.')
             return redirect('expedientes:motivo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
@@ -750,7 +757,7 @@ class TribunalListView(LoginRequiredMixin, ListView):
     context_object_name = 'tribunales'
     paginate_by = 20
     def get_queryset(self):
-        return Tribunal.objects.filter(deleted_at__isnull=True)
+        return Tribunal.objects.for_user(self.request.user).filter(deleted_at__isnull=True)
 
 class TribunalCreateView(LoginRequiredMixin, View):
     template_name = 'expedientes/tribunal_form.html'
@@ -760,7 +767,9 @@ class TribunalCreateView(LoginRequiredMixin, View):
     def post(self, request):
         form = TribunalForm(request.POST)
         if form.is_valid():
-            form.save()
+            tribunal = form.save(commit=False)
+            tribunal.usuario = request.user
+            tribunal.save()
             messages.success(request, 'Tribunal registrado.')
             return redirect('expedientes:tribunal_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
@@ -1241,7 +1250,7 @@ class SujetoProcesalListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = SujetoProcesal.objects.filter(deleted_at__isnull=True)
+        qs = SujetoProcesal.objects.for_user(self.request.user).filter(deleted_at__isnull=True)
         tipo = self.request.GET.get('tipo', '').strip()
         if tipo:
             qs = qs.filter(tipo=tipo)

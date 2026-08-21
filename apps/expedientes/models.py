@@ -16,6 +16,7 @@ class BaseManager(models.Manager):
         return self.get_queryset().for_user(user)
 
 class SujetoProcesal(models.Model):
+    objects = BaseManager()
     """Directorio parametrizado de sujetos procesales."""
     class TipoSujeto(models.TextChoices):
         DEFENSOR = 'DEF', 'Defensor'
@@ -36,6 +37,10 @@ class SujetoProcesal(models.Model):
         blank=True, null=True, verbose_name='Tribunal asociado'
     )
     observaciones = models.TextField(blank=True, null=True)
+    usuario = models.ForeignKey(
+        'usuarios.Usuario', on_delete=models.CASCADE, db_column='usuario_id',
+        null=True, blank=True, verbose_name='Usuario creador'
+    )
     deleted_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -54,6 +59,7 @@ class SujetoProcesal(models.Model):
 
 
 class Personal(models.Model):
+    objects = BaseManager()
     """Personas vinculadas a expedientes (empleados, demandantes, etc.)."""
     numero_expediente = models.CharField(max_length=50, blank=True, null=True)
     nombres = models.CharField(max_length=100)
@@ -64,6 +70,10 @@ class Personal(models.Model):
     direccion = models.TextField(blank=True, null=True)
     cargo = models.ForeignKey(
         'Cargo', on_delete=models.PROTECT, blank=True, null=True, db_column='cargo_id'
+    )
+    usuario = models.ForeignKey(
+        'usuarios.Usuario', on_delete=models.CASCADE, db_column='usuario_id',
+        null=True, blank=True, verbose_name='Usuario creador', related_name='personal_creado'
     )
     deleted_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -81,6 +91,7 @@ class Personal(models.Model):
 
 
 class Cargo(models.Model):
+    objects = BaseManager()
     """Clasificación laboral estricta: DOC, ADM, OBR."""
     class CategoriaChoices(models.TextChoices):
         DOC = 'DOC', 'Docente'
@@ -96,6 +107,10 @@ class Cargo(models.Model):
     tipo = models.TextField(choices=TipoCargoChoices.choices)
     marco_legal = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True, null=True)
+    usuario = models.ForeignKey(
+        'usuarios.Usuario', on_delete=models.CASCADE, db_column='usuario_id',
+        null=True, blank=True, verbose_name='Usuario creador'
+    )
     deleted_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -126,9 +141,14 @@ class PersonaCargo(models.Model):
 
 
 class Motivo(models.Model):
+    objects = BaseManager()
     """Catálogo de motivos asociables a expedientes."""
     descripcion = models.TextField()
     tipo = models.TextField(blank=True, null=True)
+    usuario = models.ForeignKey(
+        'usuarios.Usuario', on_delete=models.CASCADE, db_column='usuario_id',
+        null=True, blank=True, verbose_name='Usuario creador'
+    )
     deleted_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -141,6 +161,7 @@ class Motivo(models.Model):
 
 
 class Tribunal(models.Model):
+    objects = BaseManager()
     """Catálogo de tribunales y órganos jurisdiccionales."""
     class TipoTribunalChoices(models.TextChoices):
         CONT = 'CONT', 'Contencioso'
@@ -149,6 +170,10 @@ class Tribunal(models.Model):
 
     nombre = models.CharField(max_length=150, unique=True)
     tipo = models.TextField(choices=TipoTribunalChoices.choices)
+    usuario = models.ForeignKey(
+        'usuarios.Usuario', on_delete=models.CASCADE, db_column='usuario_id',
+        null=True, blank=True, verbose_name='Usuario creador'
+    )
     deleted_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -372,6 +397,7 @@ class LitigioContraparte(models.Model):
 
 
 class Notificacion(models.Model):
+    objects = BaseManager()
     """Notificaciones del sistema para los usuarios."""
     usuario = models.ForeignKey(
         'usuarios.Usuario', on_delete=models.PROTECT, db_column='usuario_id'

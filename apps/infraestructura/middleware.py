@@ -1,3 +1,4 @@
+import re
 import hashlib
 import json
 import logging
@@ -10,6 +11,54 @@ from django.shortcuts import redirect
 from apps.expedientes.services import NotificacionService
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Security Inspection Middleware (SQLi/XSS Detection)
+# ---------------------------------------------------------------------------
+class SecurityInspectionMiddleware:
+    """
+    Middleware que inspecciona GET/POST buscando patrones de ataque.
+    Registra actividad sospechosa en la Bitácora de Auditoría.
+    """
+    # Patrones simples para detección
+    SQLI_PATTERN = re.compile(r"(union|select|insert|delete|drop|update|from|where|--|#|\')", re.IGNORECASE)
+    XSS_PATTERN = re.compile(r"(<script|onerror|onload|javascript:|<iframe|eval\(|alert\()", re.IGNORECASE)
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if self.is_suspicious(request):
+            self.log_security_alert(request)
+            return HttpResponse("Acceso denegado por seguridad.", status=403)
+        return self.get_response(request)
+
+    def is_suspicious(self, request):
+        data = {**request.GET.dict(), **request.POST.dict()}
+        for key, value in data.items():
+            if isinstance(value, str):
+                if self.SQLI_PATTERN.search(value) or self.XSS_PATTERN.search(value):
+                    return True
+        return False
+
+    def log_security_alert(self, request):
+        from apps.usuarios.models import BitacoraAuditoria
+        
+        usuario = request.user if request.user.is_authenticated else None
+        ip = _extraer_ip(request)
+        
+        BitacoraAuditoria.objects.create(
+            usuario=usuario,
+            accion='SEGURIDAD',
+            tipo='INYECCION_DETECTADA',
+            descripcion=f"Ataque detectado en {request.path} desde IP {ip}",
+            modulo='SEGURIDAD',
+            ip_address=ip,
+            hash_integridad=hashlib.sha256(f"{timezone.now()}{ip}".encode()).hexdigest()
+        )
+        logger.warning(f"Seguridad: Ataque detectado desde {ip} en {request.path}")
+
+
 
 # ---------------------------------------------------------------------------
 # Mapeo de rutas a acciones descriptivas
