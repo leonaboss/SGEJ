@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import environ
 import socket
+import dj_database_url
 
 # ============================================
 # Paths & Environment
@@ -101,22 +102,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'sgej_config.wsgi.application'
 
 # ============================================
-# Database (MySQL via .env)
+# Database (MySQL via DATABASE_URL)
 # ============================================
 DATABASES = {
-    'default': {
-        'ENGINE': env('DB_ENGINE', default='django.db.backends.mysql'),
-        'NAME': env('DB_NAME', default='sgej_juridico'),
-        'USER': env('DB_USER', default='root'),
-        'PASSWORD': env('DB_PASSWORD', default=''),
-        'HOST': env('DB_HOST', default='127.0.0.1'),
-        'PORT': env('DB_PORT', default='3306'),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
-        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=600),
-    }
+    'default': dj_database_url.config(
+        default=env('DATABASE_URL', default='mysql://root@127.0.0.1:3306/sgej_juridico'),
+        conn_max_age=env.int('DB_CONN_MAX_AGE', default=600),
+        ssl_require=not DEBUG # SSL activado cuando no es DEBUG
+    )
 }
 
 # ============================================
