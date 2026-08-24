@@ -67,6 +67,10 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
         cambios.append(f"estatus cambiado a '{instance.get_estatus_display()}'")
         necesita_notificacion = True
 
+    if old.fase_actual != instance.fase_actual and instance.fase_actual:
+        cambios.append(f"fase actualizada a '{instance.get_fase_actual_display()}'")
+        necesita_notificacion = True
+
     if old.tribunal_id != instance.tribunal_id:
         cambios.append("tribunal modificado")
 

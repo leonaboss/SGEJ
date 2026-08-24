@@ -17,6 +17,7 @@ urlpatterns = [
     path('usuarios/', views.UsuarioListView.as_view(), name='usuario_list'),
     path('usuarios/crear/', views.UsuarioCreateView.as_view(), name='usuario_create'),
     path('usuarios/editar/<int:pk>/', views.UsuarioUpdateView.as_view(), name='usuario_update'),
+    path('usuarios/promover-admin/<int:pk>/', views.UsuarioPromoteToAdminView.as_view(), name='usuario_promote_admin'),
     path('usuarios/toggle-bloqueo/<int:pk>/', views.UsuarioToggleBlockView.as_view(), name='usuario_toggle_block'),
     path('2fa/confirm-block/', views.ConfirmBlock2FAView.as_view(), name='confirm_block_2fa'),
     path('2fa/confirm-delete/', views.ConfirmDelete2FAView.as_view(), name='confirm_delete_2fa'),

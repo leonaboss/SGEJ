@@ -25,23 +25,9 @@ from .forms import (
 )
 from .services import AlertasService
 from apps.infraestructura.services import ImportExportService
-from apps.infraestructura.mixins import AdminRequiredMixin
+from apps.infraestructura.mixins import AdminRequiredMixin, CatalogRequiredMixin
 
 # ─── Actuacion List View (Auditoria General) ──────────────────────────────────
-
-class ActuacionListView(LoginRequiredMixin, ListView):
-    model = Actuacion
-    template_name = 'expedientes/actuacion_list.html'
-    context_object_name = 'actuaciones'
-    paginate_by = 50
-
-    def get_queryset(self):
-        # El administrador ve todo, los demás solo sus actuaciones
-        if self.request.user.rol == 'ADMIN':
-            return Actuacion.objects.filter(deleted_at__isnull=True).order_by('-created_at')
-        return Actuacion.objects.filter(usuario=self.request.user, deleted_at__isnull=True).order_by('-created_at')
-
-
 
 class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'dashboard/index.html'
@@ -256,13 +242,6 @@ class ExpedienteCreateView(LoginRequiredMixin, View):
                 expediente.tipo_modulo = tipo_modulo
             expediente.save()
             
-            # Log de creación
-            Actuacion.objects.create(
-                content_object=expediente,
-                descripcion=f"Expediente {expediente.numero_expediente} creado por {request.user.get_full_name()}",
-                usuario=request.user,
-            )
-            
             self._crear_eventos_litigios(expediente)
             messages.success(request, f'Expediente {expediente.numero_expediente} creado.')
             if expediente.tipo_modulo:
@@ -342,13 +321,6 @@ class ExpedienteUpdateView(LoginRequiredMixin, View):
             form.save()
             expediente.refresh_from_db()
             
-            # Log de edición
-            Actuacion.objects.create(
-                content_object=expediente,
-                descripcion=f"Expediente {expediente.numero_expediente} editado por {request.user.get_full_name()}",
-                usuario=request.user,
-            )
-            
             messages.success(request, 'Expediente actualizado.')
             return redirect('expedientes:expediente_detail', pk=expediente.pk)
         else:
@@ -368,13 +340,6 @@ class ExpedienteDeleteView(LoginRequiredMixin, View):
         expediente = get_object_or_404(Expediente, pk=pk, deleted_at__isnull=True)
         numero_exp = expediente.numero_expediente
         
-        # Log de eliminación (antes de marcar como eliminado)
-        Actuacion.objects.create(
-            content_object=expediente,
-            descripcion=f"Expediente {numero_exp} eliminado por {request.user.get_full_name()}",
-            usuario=request.user,
-        )
-        
         expediente.deleted_at = timezone.now()
         expediente.save(update_fields=['deleted_at'])
         messages.success(request, f'Expediente {numero_exp} eliminado lógicamente.')
@@ -391,11 +356,6 @@ class ExpedienteUpdateFaseView(LoginRequiredMixin, View):
             expediente.fase_actual = nueva_fase
             expediente.save(update_fields=['fase_actual'])
             
-            Actuacion.objects.create(
-                content_object=expediente,
-                descripcion=f"Fase actualizada a {expediente.get_fase_actual_display()} por {request.user.get_full_name()}",
-                usuario=request.user,
-            )
             return JsonResponse({'success': True})
         return JsonResponse({'success': False, 'error': 'Fase inválida'}, status=400)
 
@@ -433,8 +393,11 @@ class ActuacionListView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        # Mantenemos el filtro por usuario si el modelo Actuacion lo soporta
-        qs = Actuacion.objects.for_user(self.request.user).filter(deleted_at__isnull=True).select_related('usuario', 'content_type')
+        user = self.request.user
+        qs = Actuacion.objects.filter(deleted_at__isnull=True)
+        if user.rol != 'ADMIN':
+            qs = qs.filter(usuario=user)
+        qs = qs.select_related('usuario', 'content_type')
         
         expediente_ct = ContentType.objects.get_for_model(Expediente)
         archived_expediente_ids = Expediente.objects.filter(is_archivado=True).values_list('id', flat=True)
@@ -547,7 +510,7 @@ class AudienciaAgendaCreateView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'expediente': expediente})
 
 
-class PersonalCreateView(LoginRequiredMixin, View):
+class PersonalCreateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/personal_form.html'
 
     def get(self, request):
@@ -565,7 +528,7 @@ class PersonalCreateView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
 
 
-class PersonalListView(LoginRequiredMixin, ListView):
+class PersonalListView(CatalogRequiredMixin, ListView):
     model = Personal
     template_name = 'expedientes/personal_list.html'
     context_object_name = 'personal_list'
@@ -621,7 +584,7 @@ class ActuacionLimpiarTodasView(LoginRequiredMixin, View):
 
 
 
-class CargoListView(LoginRequiredMixin, ListView):
+class CargoListView(CatalogRequiredMixin, ListView):
     model = Cargo
     template_name = 'expedientes/cargo_list.html'
     context_object_name = 'cargos'
@@ -650,7 +613,7 @@ class CargoListView(LoginRequiredMixin, ListView):
         ctx['search_query'] = self.request.GET.get('q', '')
         return ctx
 
-class CargoCreateView(LoginRequiredMixin, View):
+class CargoCreateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/cargo_form.html'
     def get(self, request):
         form = CargoForm()
@@ -665,7 +628,7 @@ class CargoCreateView(LoginRequiredMixin, View):
             return redirect('expedientes:cargo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
 
-class CargoUpdateView(LoginRequiredMixin, View):
+class CargoUpdateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/cargo_form.html'
     def get(self, request, pk):
         obj = get_object_or_404(Cargo, pk=pk, deleted_at__isnull=True)
@@ -680,7 +643,7 @@ class CargoUpdateView(LoginRequiredMixin, View):
             return redirect('expedientes:cargo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar', 'cargo': obj})
 
-class CargoDeleteView(LoginRequiredMixin, View):
+class CargoDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(Cargo, pk=pk, deleted_at__isnull=True)
         obj.deleted_at = timezone.now()
@@ -689,7 +652,7 @@ class CargoDeleteView(LoginRequiredMixin, View):
         return redirect('expedientes:cargo_list')
 
 
-class MotivoListView(LoginRequiredMixin, ListView):
+class MotivoListView(CatalogRequiredMixin, ListView):
     model = Motivo
     template_name = 'expedientes/motivo_list.html'
     context_object_name = 'motivos'
@@ -712,7 +675,7 @@ class MotivoListView(LoginRequiredMixin, ListView):
         ctx['search_query'] = self.request.GET.get('q', '')
         return ctx
 
-class MotivoCreateView(LoginRequiredMixin, View):
+class MotivoCreateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/motivo_form.html'
     def get(self, request):
         form = MotivoForm()
@@ -727,7 +690,7 @@ class MotivoCreateView(LoginRequiredMixin, View):
             return redirect('expedientes:motivo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
 
-class MotivoUpdateView(LoginRequiredMixin, View):
+class MotivoUpdateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/motivo_form.html'
     def get(self, request, pk):
         obj = get_object_or_404(Motivo, pk=pk, deleted_at__isnull=True)
@@ -742,7 +705,7 @@ class MotivoUpdateView(LoginRequiredMixin, View):
             return redirect('expedientes:motivo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar'})
 
-class MotivoDeleteView(LoginRequiredMixin, View):
+class MotivoDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(Motivo, pk=pk, deleted_at__isnull=True)
         obj.deleted_at = timezone.now()
@@ -751,7 +714,7 @@ class MotivoDeleteView(LoginRequiredMixin, View):
         return redirect('expedientes:motivo_list')
 
 
-class TribunalListView(LoginRequiredMixin, ListView):
+class TribunalListView(CatalogRequiredMixin, ListView):
     model = Tribunal
     template_name = 'expedientes/tribunal_list.html'
     context_object_name = 'tribunales'
@@ -759,7 +722,7 @@ class TribunalListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         return Tribunal.objects.for_user(self.request.user).filter(deleted_at__isnull=True)
 
-class TribunalCreateView(LoginRequiredMixin, View):
+class TribunalCreateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/tribunal_form.html'
     def get(self, request):
         form = TribunalForm()
@@ -774,7 +737,7 @@ class TribunalCreateView(LoginRequiredMixin, View):
             return redirect('expedientes:tribunal_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
 
-class TribunalUpdateView(LoginRequiredMixin, View):
+class TribunalUpdateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/tribunal_form.html'
     def get(self, request, pk):
         obj = get_object_or_404(Tribunal, pk=pk, deleted_at__isnull=True)
@@ -789,7 +752,7 @@ class TribunalUpdateView(LoginRequiredMixin, View):
             return redirect('expedientes:tribunal_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar'})
 
-class TribunalDeleteView(LoginRequiredMixin, View):
+class TribunalDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(Tribunal, pk=pk, deleted_at__isnull=True)
         obj.deleted_at = timezone.now()
@@ -820,7 +783,7 @@ class NotificacionListView(LoginRequiredMixin, ListView):
 
 # ─── Personal Update / Delete ────────────────────────────────────────────────
 
-class PersonalUpdateView(LoginRequiredMixin, View):
+class PersonalUpdateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/personal_form.html'
     def get(self, request, pk):
         obj = get_object_or_404(Personal, pk=pk, deleted_at__isnull=True)
@@ -835,7 +798,7 @@ class PersonalUpdateView(LoginRequiredMixin, View):
             return redirect('expedientes:personal_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar', 'personal': obj})
 
-class PersonalDeleteView(LoginRequiredMixin, View):
+class PersonalDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(Personal, pk=pk, deleted_at__isnull=True)
         obj.deleted_at = timezone.now()
@@ -1023,7 +986,7 @@ class SustanciacionNotificacionDeleteView(LoginRequiredMixin, View):
 
 # ─── PersonaCargo CRUD ───────────────────────────────────────────────────────
 
-class PersonaCargoListView(LoginRequiredMixin, ListView):
+class PersonaCargoListView(CatalogRequiredMixin, ListView):
     model = PersonaCargo
     template_name = 'expedientes/personacargo_list.html'
     context_object_name = 'asignaciones'
@@ -1032,7 +995,7 @@ class PersonaCargoListView(LoginRequiredMixin, ListView):
         return PersonaCargo.objects.filter(deleted_at__isnull=True).select_related('personal', 'cargo')
 
 
-class PersonaCargoCreateView(LoginRequiredMixin, View):
+class PersonaCargoCreateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/personacargo_form.html'
     def get(self, request):
         form = PersonaCargoForm()
@@ -1046,7 +1009,7 @@ class PersonaCargoCreateView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
 
 
-class PersonaCargoUpdateView(LoginRequiredMixin, View):
+class PersonaCargoUpdateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/personacargo_form.html'
     def get(self, request, pk):
         obj = get_object_or_404(PersonaCargo, pk=pk, deleted_at__isnull=True)
@@ -1062,7 +1025,7 @@ class PersonaCargoUpdateView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'accion': 'Editar'})
 
 
-class PersonaCargoDeleteView(LoginRequiredMixin, View):
+class PersonaCargoDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(PersonaCargo, pk=pk, deleted_at__isnull=True)
         obj.deleted_at = timezone.now()
@@ -1120,22 +1083,22 @@ CAMPOS_EXPEDIENTE = [
 ]
 
 
-class ExportarPersonalExcelView(LoginRequiredMixin, View):
+class ExportarPersonalExcelView(CatalogRequiredMixin, View):
     def get(self, request):
         qs = Personal.objects.filter(deleted_at__isnull=True)
         return ImportExportService.exportar_modelo_excel(qs, 'Personal', CAMPOS_PERSONAL)
 
-class ExportarCargosExcelView(LoginRequiredMixin, View):
+class ExportarCargosExcelView(CatalogRequiredMixin, View):
     def get(self, request):
         qs = Cargo.objects.filter(deleted_at__isnull=True)
         return ImportExportService.exportar_modelo_excel(qs, 'Cargos', CAMPOS_CARGOS)
 
-class ExportarMotivosExcelView(LoginRequiredMixin, View):
+class ExportarMotivosExcelView(CatalogRequiredMixin, View):
     def get(self, request):
         qs = Motivo.objects.filter(deleted_at__isnull=True)
         return ImportExportService.exportar_modelo_excel(qs, 'Motivos', CAMPOS_MOTIVOS)
 
-class ExportarTribunalesExcelView(LoginRequiredMixin, View):
+class ExportarTribunalesExcelView(CatalogRequiredMixin, View):
     def get(self, request):
         qs = Tribunal.objects.filter(deleted_at__isnull=True)
         return ImportExportService.exportar_modelo_excel(qs, 'Tribunales', CAMPOS_TRIBUNALES)
@@ -1243,7 +1206,7 @@ class ExpedienteDesarchivarView(LoginRequiredMixin, View):
         return redirect('expedientes:expediente_detail', pk=pk)
 
 
-class SujetoProcesalListView(LoginRequiredMixin, ListView):
+class SujetoProcesalListView(CatalogRequiredMixin, ListView):
     model = SujetoProcesal
     template_name = 'expedientes/sujetoprocesal_list.html'
     context_object_name = 'sujetos'
@@ -1268,7 +1231,7 @@ class SujetoProcesalListView(LoginRequiredMixin, ListView):
         return ctx
 
 
-class SujetoProcesalCreateView(LoginRequiredMixin, View):
+class SujetoProcesalCreateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/sujetoprocesal_form.html'
 
     def get(self, request):
@@ -1284,7 +1247,7 @@ class SujetoProcesalCreateView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
 
 
-class SujetoProcesalUpdateView(LoginRequiredMixin, View):
+class SujetoProcesalUpdateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/sujetoprocesal_form.html'
 
     def get(self, request, pk):
@@ -1302,7 +1265,7 @@ class SujetoProcesalUpdateView(LoginRequiredMixin, View):
         return render(request, self.template_name, {'form': form, 'accion': 'Editar', 'sujeto': obj})
 
 
-class SujetoProcesalDeleteView(LoginRequiredMixin, View):
+class SujetoProcesalDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(SujetoProcesal, pk=pk, deleted_at__isnull=True)
         obj.deleted_at = timezone.now()
@@ -1311,7 +1274,7 @@ class SujetoProcesalDeleteView(LoginRequiredMixin, View):
         return redirect('expedientes:sujetoprocesal_list')
 
 
-class ExportarSujetosProcesalesExcelView(LoginRequiredMixin, View):
+class ExportarSujetosProcesalesExcelView(CatalogRequiredMixin, View):
     def get(self, request):
         qs = SujetoProcesal.objects.filter(deleted_at__isnull=True)
         return ImportExportService.exportar_modelo_excel(

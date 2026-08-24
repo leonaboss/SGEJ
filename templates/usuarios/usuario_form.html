@@ -6,7 +6,14 @@
         <div class="col-lg-6">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-dark text-white">
-                    <h5 class="mb-0"><i class="bi bi-person me-2"></i>{{ accion }} Usuario</h5>
+                    <h5 class="mb-0">
+                        <i class="bi bi-person me-2"></i>{{ accion }} Usuario
+                        {% if usuario_obj and usuario_obj.personal %}
+                            : {{ usuario_obj.usuario }} - 
+                            {{ usuario_obj.personal.nombres }} {{ usuario_obj.personal.apellidos }} 
+                            (Cédula: {{ usuario_obj.personal.cedula }})
+                        {% endif %}
+                    </h5>
                 </div>
                 <div class="card-body">
                     <form method="post" enctype="multipart/form-data">

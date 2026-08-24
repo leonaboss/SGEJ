@@ -45,6 +45,7 @@
         </li>
         
         <!-- Grupo Colapsable: Documentos y Consultas -->
+        {% if request.user|has_role:'ADMIN,ABOG' %}
         <li class="sidebar-nav-item">
             <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'documento_list,lista' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseDocumentos" role="button" aria-expanded="{% if request.resolver_match.url_name in 'documento_list,lista' %}true{% else %}false{% endif %}" aria-controls="collapseDocumentos">
                 <i class="bi bi-file-earmark-pdf me-2"></i>
@@ -68,6 +69,7 @@
                 </ul>
             </div>
         </li>
+        {% endif %}
         
         <!-- Administración (Solo ADMIN) -->
         {% if request.user|has_role:'ADMIN' %}
@@ -102,6 +104,7 @@
         <hr class="sidebar-divider">
 
         <!-- Grupo Colapsable: Catálogos -->
+        {% if request.user|has_role:'ADMIN,ABOG' %}
         <li class="sidebar-nav-item">
             <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'personal_list,cargo_list,motivo_list,tribunal_list,sujetoprocesal_list' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseCatalogos" role="button" aria-expanded="{% if request.resolver_match.url_name in 'personal_list,cargo_list,motivo_list,tribunal_list,sujetoprocesal_list' %}true{% else %}false{% endif %}" aria-controls="collapseCatalogos">
                 <i class="bi bi-card-list me-2"></i>
@@ -143,6 +146,7 @@
                 </ul>
             </div>
         </li>
+        {% endif %}
 
         <!-- Grupo Colapsable: Registro de Actividad -->
         <li class="sidebar-nav-item">

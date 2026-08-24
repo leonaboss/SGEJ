@@ -46,7 +46,7 @@
                             <td><span class="badge bg-secondary">{{ doc.tipo_mime }}</span></td>
                             <td>{{ doc.expediente.numero_expediente|default:"-" }}</td>
                             <td>{{ doc.version }}</td>
-                            <td>{% if doc.es_plantilla %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-muted"></i>{% endif %}</td>
+                            <td>{% if doc.es_plantilla %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
                             <td>{{ doc.created_by.get_full_name }}</td>
                             <td>{{ doc.created_at|date:"d/m/Y H:i" }}</td>
                             <td>

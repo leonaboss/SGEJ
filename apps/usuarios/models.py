@@ -50,13 +50,8 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     ]
 
     usuario = models.CharField(max_length=50, unique=True)
-    cedula = models.CharField(max_length=20, unique=True)
+    personal = models.OneToOneField('expedientes.Personal', on_delete=models.SET_NULL, null=True, blank=True, related_name='usuario_cuenta')
     correo = models.EmailField(max_length=150, unique=True, blank=True, null=True)
-    telefono = models.CharField(max_length=50, blank=True, null=True)
-    personal = models.ForeignKey(
-        'expedientes.Personal', on_delete=models.PROTECT,
-        db_column='personal_id', blank=True, null=True, related_name='usuario_asociado'
-    )
     rol = models.CharField(max_length=12, choices=ROLES, default='USR_PUBLICO')
     foto_perfil = models.ImageField(
         upload_to='profile_photos/',
@@ -86,18 +81,31 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         ordering = ['-created_at']
 
     def get_full_name(self):
-        # Si es Administrador, siempre mostramos el username (o un nombre definido por nosotros)
-        if self.rol == 'ADMIN':
-            return self.usuario
-        
-        # Para otros usuarios, si tienen un personal vinculado, usamos su nombre
-        if self.personal_id:
-            return self.personal.get_full_name()
-        
+        if self.personal:
+            return f"{self.personal.nombres} {self.personal.apellidos}"
+        # Si no hay personal, intentamos buscar por si la relación no es directa pero existe
+        from apps.expedientes.models import Personal
+        p = Personal.objects.filter(usuario=self).first()
+        if p:
+            return f"{p.nombres} {p.apellidos}"
         return self.usuario
 
+    @property
+    def cedula(self):
+        if self.personal:
+            return self.personal.cedula
+        from apps.expedientes.models import Personal
+        p = Personal.objects.filter(usuario=self).first()
+        if p:
+            return p.cedula
+        return ""
+
+    @property
+    def telefono(self):
+        return self.personal.telefono if self.personal else ""
+
     def get_short_name(self):
-        if self.personal_id:
+        if self.personal and self.personal.nombres:
             return self.personal.nombres
         return self.usuario
 

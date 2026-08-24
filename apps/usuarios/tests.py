@@ -11,27 +11,27 @@ fake = Faker('es_VE')
 
 class UsuarioModelTest(TestCase):
     def setUp(self):
-        self.personal_admin = Personal.objects.create(
-            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=fake.unique.numerify(text='##########')
-        )
         self.admin = Usuario.objects.create_superuser(
-            usuario=fake.user_name(), password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
-            personal=self.personal_admin, cedula=self.personal_admin.cedula
-        )
-        self.personal_abogado = Personal.objects.create(
-            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=fake.unique.numerify(text='##########')
+            usuario=fake.user_name(), 
+            password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+            cedula=fake.unique.numerify(text='##########'),
+            nombres=fake.first_name(),
+            apellidos=fake.last_name()
         )
         self.abogado = Usuario.objects.create_user(
-            usuario=fake.user_name(), password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
-            personal=self.personal_abogado, cedula=self.personal_abogado.cedula,
+            usuario=fake.user_name(), 
+            password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+            cedula=fake.unique.numerify(text='##########'),
+            nombres=fake.first_name(),
+            apellidos=fake.last_name(),
             rol='ABOG'
         )
-        self.personal_publico = Personal.objects.create(
-            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=fake.unique.numerify(text='##########')
-        )
         self.publico = Usuario.objects.create_user(
-            usuario=fake.user_name(), password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
-            personal=self.personal_publico, cedula=self.personal_publico.cedula,
+            usuario=fake.user_name(), 
+            password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+            cedula=fake.unique.numerify(text='##########'),
+            nombres=fake.first_name(),
+            apellidos=fake.last_name(),
             rol='USR_PUBLICO'
         )
 
@@ -41,7 +41,7 @@ class UsuarioModelTest(TestCase):
         self.assertEqual(self.publico.rol, 'USR_PUBLICO')
 
     def test_get_full_name(self):
-        full_name = f"{self.personal_admin.nombres} {self.personal_admin.apellidos}"
+        full_name = f"{self.admin.nombres} {self.admin.apellidos}"
         self.assertEqual(self.admin.get_full_name(), full_name)
 
     def test_get_rol_display_label(self):
@@ -49,13 +49,12 @@ class UsuarioModelTest(TestCase):
         self.assertEqual(self.abogado.get_rol_display_label(), 'Abogado')
 
     def test_default_rol(self):
-        cedula_default = fake.unique.numerify(text='##########')
-        personal_default = Personal.objects.create(
-            nombres=fake.first_name(), apellidos=fake.last_name(), cedula=cedula_default
-        )
         user = Usuario.objects.create_user(
-            usuario=fake.user_name(), password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
-            personal=personal_default, cedula=cedula_default
+            usuario=fake.user_name(), 
+            password=fake.password(length=12, special_chars=True, digits=True, upper_case=True, lower_case=True),
+            cedula=fake.unique.numerify(text='##########'),
+            nombres=fake.first_name(),
+            apellidos=fake.last_name()
         )
         self.assertEqual(user.rol, 'USR_PUBLICO')
 

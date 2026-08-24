@@ -12,7 +12,7 @@
             <form method="get" class="d-flex gap-2">
                 <input type="text" id="search-input" name="q" class="form-control form-control-sm" placeholder="Buscar..." value="{{ search_query }}" style="width:200px;">
                 <button type="submit" class="btn btn-outline-dark btn-sm"><i class="bi bi-search"></i></button>
-                {% if search_query %}<a href="{% url 'expedientes:actuacion_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle"></i></a>{% endif %}
+                {% if search_query %}<a href="{% url 'expedientes:actuacion_list' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>{% endif %}
             </form>
         </div>
     </div>

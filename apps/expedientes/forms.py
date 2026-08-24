@@ -9,7 +9,6 @@ from .models import (
     SujetoProcesal
 )
 from apps.usuarios.models import Usuario
-from apps.usuarios.forms import clean_personal_text
 
 # --- Validaciones / Helpers ---
 def validate_text_only(value):
@@ -488,7 +487,24 @@ class SustanciacionNotificacionForm(forms.ModelForm):
         value = self.cleaned_data.get('personal', '')
         if not value:
             raise forms.ValidationError('Debe ingresar los nombres y apellidos del notificado.')
-        return clean_personal_text(value)
+        
+        # Lógica local para resolver personal sin importar de usuarios.forms
+        from apps.expedientes.models import Personal
+        partes = value.strip().split(None, 1)
+        if len(partes) < 2:
+            raise forms.ValidationError('Ingrese nombres y apellidos separados por espacio.')
+        nombres = partes[0]
+        apellidos = partes[1]
+        
+        personal, _ = Personal.objects.get_or_create(
+            cedula='00000000',
+            defaults={'nombres': nombres, 'apellidos': apellidos}
+        )
+        if personal.nombres != nombres or personal.apellidos != apellidos:
+            personal.nombres = nombres
+            personal.apellidos = apellidos
+            personal.save(update_fields=['nombres', 'apellidos'])
+        return personal
 
     def save(self, commit=True):
         instance = super().save(commit=False)

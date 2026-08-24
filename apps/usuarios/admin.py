@@ -6,7 +6,7 @@ class UsuarioAdmin(admin.ModelAdmin):
     list_display = ['usuario', 'get_full_name', 'cedula', 'rol',
                     'is_bloqueado', 'is_active', 'is_2fa_enabled', 'created_at']
     list_filter = ['rol', 'is_bloqueado', 'is_active', 'is_2fa_enabled']
-    search_fields = ['usuario', 'cedula', 'correo', 'personal__nombres', 'personal__apellidos']
+    search_fields = ['usuario', 'cedula', 'correo', 'nombres', 'apellidos']
     ordering = ['-created_at']
 
 @admin.register(HistorialContrasena)

@@ -7,10 +7,13 @@ class RoleRequiredMixin(UserPassesTestMixin):
     Definido en la infraestructura central.
     """
     required_role = None
+    required_roles = None
 
     def test_func(self):
         if not self.request.user.is_authenticated:
             return False
+        if self.required_roles:
+            return self.request.user.rol in self.required_roles
         return self.request.user.rol == self.required_role
 
     def handle_no_permission(self):
@@ -22,3 +25,6 @@ class AdminRequiredMixin(RoleRequiredMixin):
 
 class AbogadoRequiredMixin(RoleRequiredMixin):
     required_role = 'ABOG'
+
+class CatalogRequiredMixin(RoleRequiredMixin):
+    required_roles = ['ADMIN', 'ABOG']

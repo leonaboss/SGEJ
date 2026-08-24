@@ -20,7 +20,7 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['usuario', 'personal', 'cedula', 'correo',
+        fields = ['usuario', 'nombres', 'apellidos', 'cedula', 'correo',
                   'telefono', 'rol', 'password', 'password_repeat']
 
     def validate(self, data):

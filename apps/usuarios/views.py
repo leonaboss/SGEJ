@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import models
 from django.views import View
 from django.views.generic import ListView
 from django import forms
@@ -572,7 +573,12 @@ class UsuarioListView(RoleRequiredMixin, ListView):
         qs = Usuario.objects.filter(deleted_at__isnull=True)
         q = self.request.GET.get('q', '').strip()
         if q:
-            qs = qs.filter(usuario__icontains=q) | qs.filter(cedula__icontains=q) | qs.filter(personal__nombres__icontains=q) | qs.filter(personal__apellidos__icontains=q)
+            qs = qs.filter(
+                models.Q(usuario__icontains=q) | 
+                models.Q(personal__cedula__icontains=q) | 
+                models.Q(personal__nombres__icontains=q) | 
+                models.Q(personal__apellidos__icontains=q)
+            )
         rol = self.request.GET.get('rol', '').strip()
         if rol:
             qs = qs.filter(rol=rol)
@@ -632,6 +638,19 @@ class UsuarioUpdateView(RoleRequiredMixin, View):
             messages.success(request, f'Usuario {usuario.usuario} actualizado.')
             return redirect('usuarios:usuario_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar', 'usuario_obj': usuario})
+
+class UsuarioPromoteToAdminView(RoleRequiredMixin, View):
+    roles_permitidos = ['ADMIN']
+    def post(self, request, pk):
+        usuario = get_object_or_404(Usuario, pk=pk, deleted_at__isnull=True)
+        if usuario.rol != 'ADMIN':
+            usuario.rol = 'ADMIN'
+            usuario.save(update_fields=['rol'])
+            messages.success(request, f'El usuario {usuario.usuario} ahora es Administrador.')
+        else:
+            messages.info(request, f'El usuario {usuario.usuario} ya es Administrador.')
+        return redirect('usuarios:usuario_list')
+
 
 class UsuarioToggleBlockView(RoleRequiredMixin, View):
     roles_permitidos = ['ADMIN']
@@ -766,7 +785,6 @@ class ExportarUsuariosExcelView(LoginRequiredMixin, View):
 class ImportarUsuariosExcelView(LoginRequiredMixin, View):
     def post(self, request):
         import openpyxl
-        from apps.expedientes.models import Personal
         archivo = request.FILES.get('archivo')
         if not archivo:
             messages.error(request, 'Debe seleccionar un archivo Excel.')
@@ -781,16 +799,10 @@ class ImportarUsuariosExcelView(LoginRequiredMixin, View):
                 if not any(fila):
                     continue
                 try:
-                    personal_obj, _ = Personal.objects.get_or_create(
-                        cedula=str(fila[2]) if len(fila) > 2 and fila[2] else '00000000',
-                        defaults={
-                            'nombres': str(fila[0]) if len(fila) > 0 else '',
-                            'apellidos': str(fila[1]) if len(fila) > 1 else '',
-                        }
-                    )
                     u = Usuario(
                         usuario=str(fila[0]),
-                        personal=personal_obj,
+                        nombres=str(fila[0]) if len(fila) > 0 else '',
+                        apellidos=str(fila[1]) if len(fila) > 1 else '',
                         cedula=str(fila[2]) if len(fila) > 2 and fila[2] else '',
                     )
                     u.set_password('SGEJ' + u.cedula)
