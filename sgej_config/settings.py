@@ -69,13 +69,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django_otp.middleware.OTPMiddleware',
-    # Movido aquí para que tenga acceso a request.user
-    'apps.infraestructura.middleware.SecurityInspectionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.infraestructura.middleware.RateLimitMiddleware',
-    'apps.infraestructura.middleware.SessionControlMiddleware',
-    'apps.infraestructura.middleware.AuditoriaInmutableMiddleware',
 ]
 
 ROOT_URLCONF = 'sgej_config.urls'
