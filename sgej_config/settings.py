@@ -136,8 +136,9 @@ DATABASES = {
 }
 
 if not DEBUG:
-    # Aiven requires SSL, configured manually to avoid conflict
-    DATABASES['default']['OPTIONS']['ssl'] = {'ca': '/etc/ssl/certs/ca-certificates.crt'}
+    # Aiven requiere SSL, desactivamos la verificación estricta del certificado
+    # para evitar errores de 'self-signed certificate'
+    DATABASES['default']['OPTIONS']['ssl'] = {'verify_cert': False}
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
