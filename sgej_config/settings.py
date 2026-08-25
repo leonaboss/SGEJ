@@ -101,26 +101,47 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'sgej_config.wsgi.application'
 
-# ============================================
-# Database (MySQL configuration)
-# ============================================
-# Usamos dj_database_url pero desactivamos la configuración automática de SSL
-db_config = dj_database_url.config(
-    default=env('DATABASE_URL', default='mysql://root@127.0.0.1:3306/sgej_juridico'),
-    conn_max_age=env.int('DB_CONN_MAX_AGE', default=600),
-    ssl_require=False # Desactivamos la gestión automática de SSL aquí
-)
+import os
+from pathlib import Path
+import environ
+from urllib.parse import urlparse
 
-# Configuración manual de SSL para Aiven
+BASE_DIR = Path(__file__).resolve().parent.parent
+env = environ.Env()
+# Read .env if it exists, otherwise rely on OS env vars (Render)
+env_file = os.path.join(BASE_DIR, '.env')
+if os.path.exists(env_file):
+    environ.Env.read_env(env_file)
+
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env.bool('DEBUG', default=False)
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['sgej-1.onrender.com', 'localhost', '127.0.0.1'])
+
+# Parse DATABASE_URL manually to strip ALL query parameters (like ?ssl-mode=REQUIRED)
+db_url = env('DATABASE_URL')
+url = urlparse(db_url)
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': url.path.lstrip('/').split('?')[0],
+        'USER': url.username,
+        'PASSWORD': url.password,
+        'HOST': url.hostname,
+        'PORT': url.port or 3306,
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+    }
+}
+
 if not DEBUG:
-    # Aseguramos que existe el diccionario OPTIONS
-    if 'OPTIONS' not in db_config:
-        db_config['OPTIONS'] = {}
-    
-    # Configuración explícita del certificado SSL para Aiven
-    db_config['OPTIONS']['ssl'] = {'ca': '/etc/ssl/certs/ca-certificates.crt'}
+    # Aiven requires SSL, configured manually to avoid conflict
+    DATABASES['default']['OPTIONS']['ssl'] = {'ca': '/etc/ssl/certs/ca-certificates.crt'}
 
-DATABASES = {'default': db_config}
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # ============================================
