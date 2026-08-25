@@ -72,16 +72,25 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-12 mb-3">
-                        <label for="personal" class="form-label text-muted small fw-bold text-uppercase">Nombres y Apellidos</label>
+                    <div class="col-md-6 mb-3">
+                        <label for="nombres" class="form-label text-muted small fw-bold text-uppercase">Nombres</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-person-vcard text-muted"></i></span>
-                            <input type="text" class="form-control border-start-0 ps-0" id="personal" name="personal" required value="{{ form.personal.value|default:'' }}" placeholder="Nombres Apellidos">
+                            <input type="text" class="form-control border-start-0 ps-0" id="nombres" name="nombres" required value="{{ form.nombres.value|default:'' }}" placeholder="Nombres">
                         </div>
-                        {% if form.personal.errors %}
-                        <div class="text-danger small mt-1">{{ form.personal.errors.0 }}</div>
+                        {% if form.nombres.errors %}
+                        <div class="text-danger small mt-1">{{ form.nombres.errors.0 }}</div>
                         {% endif %}
-                        <div class="text-muted small mt-1"><i class="bi bi-info-circle me-1"></i>Escriba los nombres y apellidos. Si no existe se creará automáticamente.</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="apellidos" class="form-label text-muted small fw-bold text-uppercase">Apellidos</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-person-vcard text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0 ps-0" id="apellidos" name="apellidos" required value="{{ form.apellidos.value|default:'' }}" placeholder="Apellidos">
+                        </div>
+                        {% if form.apellidos.errors %}
+                        <div class="text-danger small mt-1">{{ form.apellidos.errors.0 }}</div>
+                        {% endif %}
                     </div>
                 </div>
 

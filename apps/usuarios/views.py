@@ -521,15 +521,9 @@ class RegisterView(View):
             return redirect('expedientes:dashboard')
         form = RegistroUsuarioForm(request.POST, roles_filter=self.get_roles_disponibles())
         if form.is_valid():
-            try:
-                usuario = form.save()
-                messages.success(request, f'Cuenta creada exitosamente. Inicie sesión.')
-                return redirect('usuarios:login')
-            except Exception as e:
-                print(f"ERROR AL GUARDAR USUARIO: {e}")
-                messages.error(request, f'Error al guardar usuario: {e}')
-        else:
-            print(f"FORMULARIO INVALIDO: {form.errors}")
+            usuario = form.save()
+            messages.success(request, f'Cuenta creada exitosamente. Inicie sesión.')
+            return redirect('usuarios:login')
         return render(request, self.template_name, {
             'form': form, 'es_primero': Usuario.objects.count() == 0,
         })
