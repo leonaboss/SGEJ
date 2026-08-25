@@ -62,7 +62,6 @@ INSTALLED_APPS = [
 # Middleware
 # ============================================
 MIDDLEWARE = [
-    'apps.infraestructura.middleware.SecurityInspectionMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -70,6 +69,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django_otp.middleware.OTPMiddleware',
+    # Movido aquí para que tenga acceso a request.user
+    'apps.infraestructura.middleware.SecurityInspectionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.infraestructura.middleware.RateLimitMiddleware',
