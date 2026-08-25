@@ -101,29 +101,33 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'sgej_config.wsgi.application'
 
+from urllib.parse import urlparse
+
 # ============================================
-# Database (MySQL via DATABASE_URL)
+# Database (MySQL configuration)
 # ============================================
-# Obtenemos la configuración base
+db_url = env('DATABASE_URL', default='mysql://root@127.0.0.1:3306/sgej_juridico')
+url = urlparse(db_url)
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default=env('DATABASE_URL', default='mysql://root@127.0.0.1:3306/sgej_juridico'),
-        conn_max_age=env.int('DB_CONN_MAX_AGE', default=600),
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': url.path[1:], # Quitamos la barra inicial
+        'USER': url.username,
+        'PASSWORD': url.password,
+        'HOST': url.hostname,
+        'PORT': url.port or 3306,
+        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=600),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+    }
 }
 
-# Limpiamos opciones problemáticas y forzamos SSL para Aiven en producción
+# Forzamos configuración SSL específica para Aiven en producción
 if not DEBUG:
-    # Aseguramos que OPTIONS sea un diccionario
-    if 'OPTIONS' not in DATABASES['default']:
-        DATABASES['default']['OPTIONS'] = {}
-    
-    # Eliminamos parámetros que causan conflicto
-    DATABASES['default']['OPTIONS'].pop('sslmode', None)
-    DATABASES['default']['OPTIONS'].pop('ssl-mode', None)
-    
-    # Agregamos la configuración SSL necesaria para Aiven
     DATABASES['default']['OPTIONS']['ssl'] = {'ca': '/etc/ssl/certs/ca-certificates.crt'}
+
 
 # ============================================
 # Auth
