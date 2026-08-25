@@ -105,18 +105,25 @@ WSGI_APPLICATION = 'sgej_config.wsgi.application'
 # Database (MySQL via DATABASE_URL)
 # ============================================
 # Obtenemos la configuración base
-db_config = dj_database_url.config(
-    default=env('DATABASE_URL', default='mysql://root@127.0.0.1:3306/sgej_juridico'),
-    conn_max_age=env.int('DB_CONN_MAX_AGE', default=600),
-)
+DATABASES = {
+    'default': dj_database_url.config(
+        default=env('DATABASE_URL', default='mysql://root@127.0.0.1:3306/sgej_juridico'),
+        conn_max_age=env.int('DB_CONN_MAX_AGE', default=600),
+    )
+}
 
-# Forzamos la configuración SSL para Aiven
+# Limpiamos opciones problemáticas y forzamos SSL para Aiven en producción
 if not DEBUG:
-    db_config['OPTIONS'] = {
-        'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'}
-    }
-
-DATABASES = {'default': db_config}
+    # Aseguramos que OPTIONS sea un diccionario
+    if 'OPTIONS' not in DATABASES['default']:
+        DATABASES['default']['OPTIONS'] = {}
+    
+    # Eliminamos parámetros que causan conflicto
+    DATABASES['default']['OPTIONS'].pop('sslmode', None)
+    DATABASES['default']['OPTIONS'].pop('ssl-mode', None)
+    
+    # Agregamos la configuración SSL necesaria para Aiven
+    DATABASES['default']['OPTIONS']['ssl'] = {'ca': '/etc/ssl/certs/ca-certificates.crt'}
 
 # ============================================
 # Auth
