@@ -65,9 +65,12 @@ class LoginView(View):
                 return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
             user.intentos_fallidos = 0
             user.save(update_fields=['intentos_fallidos'])
-            if user.is_2fa_enabled:
-                request.session['2fa_user_id'] = user.id
-                return redirect('usuarios:totp_verify')
+            
+            # --- 2FA TEMPORALMENTE DESACTIVADO ---
+            # if user.is_2fa_enabled:
+            #     request.session['2fa_user_id'] = user.id
+            #     return redirect('usuarios:totp_verify')
+            
             login(request, user)
             return redirect('expedientes:dashboard')
         else:
