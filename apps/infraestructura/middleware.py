@@ -28,6 +28,10 @@ class SecurityInspectionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # Excluimos las rutas de login y registro de la inspección estricta
+        if any(path in request.path for path in ['/auth/login', '/auth/register']):
+            return self.get_response(request)
+            
         if self.is_suspicious(request):
             self.log_security_alert(request)
             return HttpResponse("Acceso denegado por seguridad.", status=403)
