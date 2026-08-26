@@ -127,6 +127,7 @@ DATABASES = {
         'PORT': url.port or 3306,
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'connect_timeout': 30, # Tiempo extra para conectar
         },
     }
 }
