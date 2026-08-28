@@ -55,19 +55,21 @@ class PersonalValidationMixin:
         instance.personal = personal
 
 class CargoValidationMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'cargo' in self.fields:
+            self.fields['cargo'].queryset = Cargo.objects.filter(deleted_at__isnull=True)
+            self.fields['cargo'].widget = forms.Select(attrs={'class': 'form-select'})
+            self.fields['cargo'].label = 'Cargo'
+            self.fields['cargo'].required = False
+            self.fields['cargo'].empty_label = 'Seleccione un cargo'
+
     def clean_cargo(self):
-        if 'cargo' not in self.fields: return None
-        value = self.cleaned_data.get('cargo')
-        if not value: return None
-        if isinstance(value, Cargo):
-            return value
-        validate_alphanumeric_text(value)
-        value = value.strip()
-        cargo, _ = Cargo.objects.get_or_create(descripcion=value, defaults={'categoria': 'DOC', 'tipo': 'FIJ', 'marco_legal': 'Por definir'})
-        return cargo
+        return self.cleaned_data.get('cargo')
     
     def save_cargo(self, instance):
-        if 'cargo' in self.cleaned_data and self.cleaned_data['cargo']: instance.cargo = self.cleaned_data['cargo']
+        if 'cargo' in self.cleaned_data and self.cleaned_data['cargo']:
+            instance.cargo = self.cleaned_data['cargo']
 
 class MotivoValidationMixin:
     def clean_motivo(self):
