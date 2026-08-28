@@ -102,6 +102,13 @@ class TribunalValidationMixin:
 
 # --- Base Form ---
 class BaseExpedienteForm(forms.ModelForm):
+    cargo = forms.ModelChoiceField(
+        queryset=Cargo.objects.filter(deleted_at__isnull=True),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Cargo',
+        required=False,
+        empty_label='Seleccione un cargo'
+    )
     nombre_completo = forms.CharField(
         max_length=200, 
         label='Nombres y Apellidos', 
@@ -116,7 +123,7 @@ class BaseExpedienteForm(forms.ModelForm):
     )
     class Meta:
         model = Expediente
-        exclude = ['deleted_at', 'created_at', 'updated_at', 'firma_digital_hash', 'huella_digital_hash', 'defensor', 'fiscal', 'juez', 'secretario', 'documentos_procesados', 'correspondencia_recibida', 'correspondencia_enviada', 'is_archivado', 'personal', 'tipo_modulo', 'nombre_completo']
+        exclude = ['deleted_at', 'created_at', 'updated_at', 'firma_digital_hash', 'huella_digital_hash', 'defensor', 'fiscal', 'juez', 'secretario', 'documentos_procesados', 'correspondencia_recibida', 'correspondencia_enviada', 'is_archivado', 'personal', 'tipo_modulo', 'nombre_completo', 'cargo']
         widgets = {
             'fecha_registro': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -135,7 +142,6 @@ class BaseExpedienteForm(forms.ModelForm):
             'fase_actual': 'Fase',
             'cronometro_limite': 'Cronómetro Legal',
             'motivo': 'Motivo',
-            'cargo': 'Cargo',
             'institucion': 'Institución',
             'ano': 'Año',
             'duracion': 'Duración',
@@ -149,10 +155,13 @@ class BaseExpedienteForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk and self.instance.personal:
-            self.initial['nombre_completo'] = self.instance.personal.get_full_name()
-        if self.instance and self.instance.pk and self.instance.motivo:
-            self.initial['motivo'] = self.instance.motivo.descripcion
+        if self.instance and self.instance.pk:
+            if self.instance.personal:
+                self.initial['nombre_completo'] = self.instance.personal.get_full_name()
+            if self.instance.motivo:
+                self.initial['motivo'] = self.instance.motivo.descripcion
+            if self.instance.cargo:
+                self.initial['cargo'] = self.instance.cargo
         if hasattr(self, 'fields_order'):
             self.order_fields(self.fields_order)
     
