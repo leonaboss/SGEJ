@@ -58,7 +58,8 @@ class CargoValidationMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if 'cargo' in self.fields:
-            self.fields['cargo'].queryset = Cargo.objects.filter(deleted_at__isnull=True)
+            # Ya configuramos el campo como ModelChoiceField en BaseExpedienteForm
+            # solo necesitamos asegurar el widget y etiquetas si es necesario
             self.fields['cargo'].widget = forms.Select(attrs={'class': 'form-select'})
             self.fields['cargo'].label = 'Cargo'
             self.fields['cargo'].required = False
