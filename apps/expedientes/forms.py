@@ -104,7 +104,7 @@ class TribunalValidationMixin:
 # --- Base Form ---
 class BaseExpedienteForm(forms.ModelForm):
     cargo = forms.ModelChoiceField(
-        queryset=Cargo.objects.filter(deleted_at__isnull=True),
+        queryset=Cargo.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='Cargo',
         required=False,
