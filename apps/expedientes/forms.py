@@ -103,6 +103,8 @@ class TribunalValidationMixin:
 
 # --- Base Form ---
 class BaseExpedienteForm(forms.ModelForm):
+# --- Base Form ---
+class BaseExpedienteForm(forms.ModelForm):
     cargo = forms.ModelChoiceField(
         queryset=Cargo.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'}),
@@ -110,6 +112,79 @@ class BaseExpedienteForm(forms.ModelForm):
         required=False,
         empty_label='Seleccione un cargo'
     )
+    nombre_completo = forms.CharField(
+        max_length=200, 
+        label='Nombres y Apellidos', 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Juan Pérez'}),
+        required=False
+    )
+    motivo = forms.CharField(
+        max_length=255,
+        label='Motivo',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Escriba el motivo aquí'}),
+        required=False
+    )
+    class Meta:
+        model = Expediente
+        exclude = ['deleted_at', 'created_at', 'updated_at', 'firma_digital_hash', 'huella_digital_hash', 'defensor', 'fiscal', 'juez', 'secretario', 'documentos_procesados', 'correspondencia_recibida', 'correspondencia_enviada', 'is_archivado', 'personal', 'tipo_modulo', 'nombre_completo', 'cargo']
+        widgets = {
+            'fecha_registro': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fecha_demanda': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'hora_procedimiento': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'cronometro_limite': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+        }
+        labels = {
+            'numero_expediente': 'N° Expediente',
+            'numero_expediente_relativo': 'N° Exp. Relativo',
+            'cedula': 'Cédula',
+            'estatus': 'Estatus',
+            'fecha_registro': 'Fecha Registro',
+            'fecha_demanda': 'Fecha de Demanda',
+            'tribunal': 'Tribunal',
+            'fase_actual': 'Fase',
+            'cronometro_limite': 'Cronómetro Legal',
+            'motivo': 'Motivo',
+            'institucion': 'Institución',
+            'ano': 'Año',
+            'duracion': 'Duración',
+            'tipo_convenio': 'Tipo de Convenio',
+            'fecha_vencimiento': 'Fecha de Vencimiento',
+            'tipo_demanda': 'Tipo de Demanda',
+            'hora_procedimiento': 'Hora',
+            'lugar_procedimiento': 'Lugar',
+            'nombre_completo': 'Nombres y Apellidos',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            if self.instance.personal:
+                self.initial['nombre_completo'] = self.instance.personal.get_full_name()
+            if self.instance.motivo:
+                self.initial['motivo'] = self.instance.motivo.descripcion
+            # Cargamos el cargo si existe en la instancia
+            if self.instance.cargo:
+                self.initial['cargo'] = self.instance.cargo
+        if hasattr(self, 'fields_order'):
+            self.order_fields(self.fields_order)
+    
+    def clean_numero_expediente(self):
+        if 'numero_expediente' not in self.fields:
+            return None
+        value = self.cleaned_data.get('numero_expediente', '').strip()
+        if not value: raise forms.ValidationError('El número de expediente es obligatorio.')
+        return value
+
+    # Aseguramos que al guardar se vincule el cargo seleccionado
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Si el usuario seleccionó un cargo del dropdown, lo guardamos
+        if self.cleaned_data.get('cargo'):
+            instance.cargo = self.cleaned_data['cargo']
+        if commit:
+            instance.save()
+        return instance
     nombre_completo = forms.CharField(
         max_length=200, 
         label='Nombres y Apellidos', 
