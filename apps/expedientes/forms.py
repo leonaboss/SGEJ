@@ -93,8 +93,13 @@ class TribunalValidationMixin:
         if 'tribunal' in self.cleaned_data and self.cleaned_data['tribunal']: instance.tribunal = self.cleaned_data['tribunal']
 
 # --- Base Form ---
+class CargoChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return f"{obj.get_categoria_display()} - {obj.get_tipo_display()}"
+
+
 class BaseExpedienteForm(forms.ModelForm):
-    cargo = forms.ModelChoiceField(
+    cargo = CargoChoiceField(
         queryset=Cargo.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='Cargo',
@@ -513,6 +518,11 @@ class LitigioContraparteForm(forms.ModelForm):
         }
 
 class PersonaCargoForm(forms.ModelForm):
+    cargo = CargoChoiceField(
+        queryset=Cargo.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Cargo'
+    )
     class Meta:
         model = PersonaCargo
         exclude = ['deleted_at']
@@ -520,7 +530,6 @@ class PersonaCargoForm(forms.ModelForm):
             'fecha_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'fecha_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'personal': forms.Select(attrs={'class': 'form-select'}),
-            'cargo': forms.Select(attrs={'class': 'form-select'}),
         }
 
 class SustanciacionNotificacionForm(forms.ModelForm):
