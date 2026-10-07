@@ -585,26 +585,19 @@ class ActuacionLimpiarTodasView(LoginRequiredMixin, View):
 
 
 class CargoListView(CatalogRequiredMixin, ListView):
-    model = Cargo
+    model = PersonaCargo
     template_name = 'expedientes/cargo_list.html'
-    context_object_name = 'cargos'
+    context_object_name = 'asignaciones'
     paginate_by = 20
     def get_queryset(self):
-        # Prefetch de las asignaciones activas para mostrar quién tiene el cargo
-        from .models import PersonaCargo
-        qs = Cargo.objects.for_user(self.request.user).filter(deleted_at__isnull=True).prefetch_related(
-            Prefetch(
-                'personacargo_set',
-                queryset=PersonaCargo.objects.filter(es_cargo_actual=True, deleted_at__isnull=True).select_related('personal'),
-                to_attr='asignaciones_actuales'
-            )
-        )
+        qs = PersonaCargo.objects.filter(deleted_at__isnull=True, es_cargo_actual=True).select_related('personal', 'cargo')
         q = self.request.GET.get('q', '').strip()
         if q:
             qs = qs.filter(
-                models.Q(descripcion__icontains=q) |
-                models.Q(personacargo__personal__nombres__icontains=q) |
-                models.Q(personacargo__personal__apellidos__icontains=q)
+                models.Q(cargo__descripcion__icontains=q) |
+                models.Q(personal__nombres__icontains=q) |
+                models.Q(personal__apellidos__icontains=q) |
+                models.Q(personal__cedula__icontains=q)
             ).distinct()
         return qs
 
