@@ -3,43 +3,38 @@
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0"><i class="bi bi-briefcase me-2"></i>Cargos y Asignaciones</h5>
+        <h5 class="mb-0"><i class="bi bi-briefcase me-2"></i>Cargos</h5>
         <div class="d-flex gap-2">
             <form method="get" class="d-flex">
-                <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar cargo o personal..." value="{{ search_query }}">
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar cargo..." value="{{ search_query }}">
                 <button type="submit" class="btn btn-outline-secondary btn-sm ms-1"><i class="bi bi-search"></i></button>
             </form>
-            <a href="{% url 'expedientes:personacargo_create' %}" class="btn btn-dark btn-sm"><i class="bi bi-plus-lg me-1"></i>Asignar Cargo</a>
-            <a href="{% url 'expedientes:cargo_create' %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-briefcase me-1"></i>Nuevo Tipo de Cargo</a>
+            <a href="{% url 'expedientes:cargo_create' %}" class="btn btn-dark btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo Cargo</a>
         </div>
     </div>
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark"><tr><th>Personal</th><th>Categoría / Tipo de Cargo</th><th>Marco Legal</th><th>Fecha Inicio</th><th>Acciones</th></tr></thead>
+                <thead class="table-dark"><tr><th>Categoría</th><th>Tipo</th><th>Marco Legal</th><th>Asignado a</th><th>Acciones</th></tr></thead>
                 <tbody>
-                    {% for pc in asignaciones %}
+                    {% for c in cargos %}
                     <tr>
+                        <td><span class="badge bg-secondary">{{ c.get_categoria_display }}</span></td>
+                        <td>{{ c.get_tipo_display }}</td>
+                        <td><small>{{ c.marco_legal }}</small></td>
                         <td>
-                            {% if pc.personal %}
-                                <strong>{{ pc.personal.nombres }} {{ pc.personal.apellidos }}</strong>
-                                <br><small class="text-muted">C.I: {{ pc.personal.cedula }}</small>
-                            {% else %}
-                                <span class="text-muted">Sin personal</span>
-                            {% endif %}
+                            {% for pc in c.asignaciones_actuales %}
+                                <span class="badge bg-info text-dark">{{ pc.personal.nombres }} {{ pc.personal.apellidos }}</span>
+                            {% empty %}
+                                <span class="text-muted small">Sin asignar</span>
+                            {% endfor %}
                         </td>
                         <td>
-                            <span class="badge bg-secondary">{{ pc.cargo.get_categoria_display }}</span>
-                            <div class="small mt-1">{{ pc.cargo.get_tipo_display }}</div>
-                        </td>
-                        <td><small>{{ pc.cargo.marco_legal }}</small></td>
-                        <td><small>{{ pc.cargo.created_at|date:"d/m/Y" }}</small></td>
-                        <td>
-                            <a href="{% url 'expedientes:personacargo_update' pc.pk %}" class="btn btn-outline-dark btn-sm" title="Editar asignación"><i class="bi bi-pencil"></i></a>
-                            <form method="post" action="{% url 'expedientes:personacargo_delete' pc.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar esta asignación?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar asignación"><i class="bi bi-trash"></i></button></form>
+                            <a href="{% url 'expedientes:cargo_update' c.pk %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
+                            <form method="post" action="{% url 'expedientes:cargo_delete' c.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este cargo?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button></form>
                         </td>
                     </tr>
-                    {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No hay asignaciones de cargos registradas.</td></tr>
+                    {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No hay cargos registrados.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
