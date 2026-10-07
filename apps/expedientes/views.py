@@ -998,7 +998,7 @@ class PersonaCargoCreateView(CatalogRequiredMixin, View):
         if form.is_valid():
             form.save()
             messages.success(request, 'Asignación registrada.')
-            return redirect('expedientes:personacargo_list')
+            return redirect('expedientes:cargo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
 
 
@@ -1014,7 +1014,7 @@ class PersonaCargoUpdateView(CatalogRequiredMixin, View):
         if form.is_valid():
             form.save()
             messages.success(request, 'Asignación actualizada.')
-            return redirect('expedientes:personacargo_list')
+            return redirect('expedientes:cargo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar'})
 
 
@@ -1024,7 +1024,7 @@ class PersonaCargoDeleteView(CatalogRequiredMixin, View):
         obj.deleted_at = timezone.now()
         obj.save(update_fields=['deleted_at'])
         messages.success(request, 'Asignación eliminada.')
-        return redirect('expedientes:personacargo_list')
+        return redirect('expedientes:cargo_list')
 
 
 # ─── Import / Export ─────────────────────────────────────────────────────────

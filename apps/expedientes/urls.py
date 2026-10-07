@@ -42,7 +42,7 @@ urlpatterns = [
     path('contrapartes/editar/<int:pk>/', views.LitigioContraparteUpdateView.as_view(), name='litigiocontraparte_update'),
     path('contrapartes/eliminar/<int:pk>/', views.LitigioContraparteDeleteView.as_view(), name='litigiocontraparte_delete'),
 
-    path('asignaciones/', views.PersonaCargoListView.as_view(), name='personacargo_list'),
+    # path('asignaciones/', views.PersonaCargoListView.as_view(), name='personacargo_list'),
     path('asignaciones/crear/', views.PersonaCargoCreateView.as_view(), name='personacargo_create'),
     path('asignaciones/editar/<int:pk>/', views.PersonaCargoUpdateView.as_view(), name='personacargo_update'),
     path('asignaciones/eliminar/<int:pk>/', views.PersonaCargoDeleteView.as_view(), name='personacargo_delete'),
