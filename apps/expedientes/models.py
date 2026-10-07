@@ -119,7 +119,9 @@ class Cargo(models.Model):
         ordering = ['categoria']
 
     def __str__(self):
-        return f"{self.get_categoria_display()} - {self.get_tipo_display()}"
+        if self.descripcion:
+            return self.descripcion
+        return f"{self.get_categoria_display()} - {self.get_tipo_display()}" 
 
 
 class PersonaCargo(models.Model):
