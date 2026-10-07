@@ -516,6 +516,12 @@ class PersonaCargoForm(forms.ModelForm):
     class Meta:
         model = PersonaCargo
         exclude = ['deleted_at']
+        widgets = {
+            'fecha_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fecha_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'personal': forms.Select(attrs={'class': 'form-select'}),
+            'cargo': forms.Select(attrs={'class': 'form-select'}),
+        }
 
 class SustanciacionNotificacionForm(forms.ModelForm):
     class Meta:
