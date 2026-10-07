@@ -139,7 +139,7 @@ class PersonaCargo(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.personal} → {self.cargo}"
+        return f"{self.personal.get_full_name()} ({self.cargo})"
 
 
 class Motivo(models.Model):
