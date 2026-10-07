@@ -55,15 +55,6 @@ class PersonalValidationMixin:
         instance.personal = personal
 
 class CargoValidationMixin:
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if 'cargo' in self.fields:
-            # Ya configuramos el campo como ModelChoiceField en BaseExpedienteForm
-            # solo necesitamos asegurar el widget y etiquetas si es necesario
-            self.fields['cargo'].widget = forms.Select(attrs={'class': 'form-select'})
-            self.fields['cargo'].label = 'Cargo'
-            self.fields['cargo'].required = False
-            self.fields['cargo'].empty_label = 'Seleccione un cargo'
 
     def clean_cargo(self):
         return self.cleaned_data.get('cargo')
@@ -103,8 +94,6 @@ class TribunalValidationMixin:
 
 # --- Base Form ---
 class BaseExpedienteForm(forms.ModelForm):
-# --- Base Form ---
-class BaseExpedienteForm(forms.ModelForm):
     cargo = forms.ModelChoiceField(
         queryset=Cargo.objects.all(),
         widget=forms.Select(attrs={'class': 'form-select'}),
@@ -126,7 +115,7 @@ class BaseExpedienteForm(forms.ModelForm):
     )
     class Meta:
         model = Expediente
-        exclude = ['deleted_at', 'created_at', 'updated_at', 'firma_digital_hash', 'huella_digital_hash', 'defensor', 'fiscal', 'juez', 'secretario', 'documentos_procesados', 'correspondencia_recibida', 'correspondencia_enviada', 'is_archivado', 'personal', 'tipo_modulo', 'nombre_completo', 'cargo']
+        exclude = ['deleted_at', 'created_at', 'updated_at', 'firma_digital_hash', 'huella_digital_hash', 'defensor', 'fiscal', 'juez', 'secretario', 'documentos_procesados', 'correspondencia_recibida', 'correspondencia_enviada', 'is_archivado', 'personal', 'tipo_modulo', 'nombre_completo']
         widgets = {
             'fecha_registro': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -163,13 +152,13 @@ class BaseExpedienteForm(forms.ModelForm):
                 self.initial['nombre_completo'] = self.instance.personal.get_full_name()
             if self.instance.motivo:
                 self.initial['motivo'] = self.instance.motivo.descripcion
-            # Cargamos el cargo si existe en la instancia
             if self.instance.cargo:
                 self.initial['cargo'] = self.instance.cargo
         if hasattr(self, 'fields_order'):
             self.order_fields(self.fields_order)
     
     def clean_numero_expediente(self):
+        # Solo validar si el campo es parte del formulario activo
         if 'numero_expediente' not in self.fields:
             return None
         value = self.cleaned_data.get('numero_expediente', '').strip()
@@ -185,21 +174,7 @@ class BaseExpedienteForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
-    nombre_completo = forms.CharField(
-        max_length=200, 
-        label='Nombres y Apellidos', 
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Juan Pérez'}),
-        required=False
-    )
-    motivo = forms.CharField(
-        max_length=255,
-        label='Motivo',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Escriba el motivo aquí'}),
-        required=False
-    )
-    class Meta:
-        model = Expediente
-        exclude = ['deleted_at', 'created_at', 'updated_at', 'firma_digital_hash', 'huella_digital_hash', 'defensor', 'fiscal', 'juez', 'secretario', 'documentos_procesados', 'correspondencia_recibida', 'correspondencia_enviada', 'is_archivado', 'personal', 'tipo_modulo', 'nombre_completo', 'cargo']
+
         widgets = {
             'fecha_registro': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'fecha_vencimiento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
