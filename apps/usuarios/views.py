@@ -298,7 +298,7 @@ class RecoveryView(View):
     def get(self, request):
         from django.conf import settings
         entorno = getattr(settings, 'ENTORNO', 'localhost')
-        is_production = entorno in ('produccion', 'production')
+        is_production = str(entorno).lower() in ('produccion', 'production')
 
         if is_production:
             if request.session.get('recovery_pending_verified'):
@@ -316,7 +316,7 @@ class RecoveryView(View):
         from django.utils.crypto import get_random_string
         from django.core.mail import send_mail
         entorno = getattr(settings, 'ENTORNO', 'localhost')
-        is_production = entorno in ('produccion', 'production')
+        is_production = str(entorno).lower() in ('produccion', 'production')
 
         stage = request.POST.get('stage', 'email' if is_production else 'phrase')
 
