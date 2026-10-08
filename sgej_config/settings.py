@@ -19,6 +19,7 @@ env = environ.Env(
     ENTORNO=(str, 'localhost'),
     RECAPTCHA_SITE_KEY=(str, ''),
     RECAPTCHA_SECRET_KEY=(str, ''),
+    RESEND_API_KEY=(str, ''),
 )
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
@@ -29,6 +30,7 @@ ENTORNO = env('ENTORNO', default='localhost')
 FERNET_MASTER_KEY = env('FERNET_MASTER_KEY')
 RECAPTCHA_SITE_KEY = env('RECAPTCHA_SITE_KEY')
 RECAPTCHA_SECRET_KEY = env('RECAPTCHA_SECRET_KEY')
+RESEND_API_KEY = env('RESEND_API_KEY')
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

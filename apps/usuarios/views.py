@@ -314,7 +314,7 @@ class RecoveryView(View):
     def post(self, request):
         from django.conf import settings
         from django.utils.crypto import get_random_string
-        from django.core.mail import send_mail
+        from .services import enviar_correo_seguro
         entorno = getattr(settings, 'ENTORNO', 'localhost')
         is_production = str(entorno).lower() in ('produccion', 'production')
 
@@ -356,13 +356,9 @@ class RecoveryView(View):
                 
                 if user.correo:
                     try:
-                        send_mail(
-                            'Recuperación de Contraseña - SGEJ',
-                            f'Su código de verificación para recuperar la contraseña es: {codigo}\n\nEste código vence en 10 minutos.',
-                            remitente,
-                            [user.correo],
-                            fail_silently=False,
-                        )
+                        asunto = 'Recuperación de Contraseña - SGEJ'
+                        mensaje = f'Su código de verificación para recuperar la contraseña es: {codigo}\n\nEste código vence en 10 minutos.'
+                        enviar_correo_seguro(asunto, mensaje, [user.correo], html_mensaje=f"<p>{mensaje.replace(chr(10), '<br>')}</p>")
                     except Exception as exc:
                         messages.error(request, f'No fue posible enviar el correo de recuperación: {exc}')
                         return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
@@ -387,16 +383,11 @@ class RecoveryView(View):
                 request.session['recovery_pending_code_hash'] = make_password(codigo)
                 request.session['recovery_pending_code_expires_at'] = (timezone.now() + timedelta(minutes=10)).isoformat()
                 request.session['recovery_pending_verified'] = False
-                remitente = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER or 'no-reply@uptag.edu.ve'
                 if user.correo:
                     try:
-                        send_mail(
-                            'Recuperación de Contraseña - SGEJ',
-                            f'Su código de verificación para recuperar la contraseña es: {codigo}\n\nEste código vence en 10 minutos.',
-                            remitente,
-                            [user.correo],
-                            fail_silently=False,
-                        )
+                        asunto = 'Recuperación de Contraseña - SGEJ'
+                        mensaje = f'Su código de verificación para recuperar la contraseña es: {codigo}\n\nEste código vence en 10 minutos.'
+                        enviar_correo_seguro(asunto, mensaje, [user.correo], html_mensaje=f"<p>{mensaje.replace(chr(10), '<br>')}</p>")
                     except Exception:
                         pass
                 return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input, 'is_production': True})

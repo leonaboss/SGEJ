@@ -1,7 +1,7 @@
 import logging
 import openpyxl
 from django.conf import settings
-from django.core.mail import send_mail
+from apps.usuarios.services import enviar_correo_seguro
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -28,10 +28,10 @@ class AlertasService:
             'dias_restantes': (evento.fecha_hora.date() - timezone.now().date()).days,
         })
         try:
-            send_mail(
-                asunto, mensaje, settings.DEFAULT_FROM_EMAIL,
-                [evento.usuario.correo], fail_silently=False,
-                html_message=mensaje,
+            enviar_correo_seguro(
+                asunto, mensaje,
+                [evento.usuario.correo],
+                html_mensaje=mensaje,
             )
             evento.notificado_email = True
             evento.save(update_fields=['notificado_email'])
