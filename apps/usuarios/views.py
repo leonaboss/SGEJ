@@ -298,16 +298,9 @@ class RecoveryView(View):
     def get(self, request):
         from django.conf import settings
         entorno = getattr(settings, 'ENTORNO', 'localhost')
-        
-        # Lógica mejorada: En desarrollo local siempre permitimos frase, 
-        # independientemente de si hay email configurado.
-        is_production = entorno == 'produccion'
-        email_configured = bool(getattr(settings, 'EMAIL_HOST_USER', '').strip() and getattr(settings, 'EMAIL_HOST', '').strip())
-        
-        # Forzar frase de seguridad si estamos en local, aunque haya mail configurado
-        use_email = is_production and email_configured
-        
-        if use_email:
+        is_production = entorno in ('produccion', 'production')
+
+        if is_production:
             if request.session.get('recovery_pending_verified'):
                 stage = 'password'
             elif request.session.get('recovery_pending_user_id'):
@@ -316,100 +309,125 @@ class RecoveryView(View):
                 stage = 'email'
         else:
             stage = 'password' if request.session.get('recovery_pending_user_id') else 'phrase'
-        return render(request, self.template_name, {'entorno': entorno, 'stage': stage})
+        return render(request, self.template_name, {'entorno': entorno, 'stage': stage, 'is_production': is_production})
 
     def post(self, request):
         from django.conf import settings
         from django.utils.crypto import get_random_string
         from django.core.mail import send_mail
         entorno = getattr(settings, 'ENTORNO', 'localhost')
-        
-        is_production = entorno == 'produccion'
-        email_configured = bool(getattr(settings, 'EMAIL_HOST_USER', '').strip() and getattr(settings, 'EMAIL_HOST', '').strip())
-        use_email = is_production and email_configured
-        
-        stage = request.POST.get('stage', 'email' if use_email else 'phrase')
-        usuario_input = request.POST.get('usuario', '').strip()
-        if not usuario_input:
-            messages.error(request, 'Debe ingresar su nombre de usuario.')
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'email' if use_email else 'phrase'})
-        try:
-            user = Usuario.objects.get(usuario=usuario_input, deleted_at__isnull=True)
-        except Usuario.DoesNotExist:
-            messages.error(request, 'Usuario no encontrado.')
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'email' if use_email else 'phrase'})
-        
-        # Validación de seguridad adicional para staff
-        if user.is_staff and not request.session.get('recovery_staff_verified'):
-            if stage != 'security_question':
-                try:
-                    pregunta = user.security_question.pregunta
-                except SecurityQuestion.DoesNotExist:
-                    messages.error(request, 'No tiene configurada una pregunta de seguridad. Contacte al Administrador.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email' if use_email else 'phrase'})
-                
-                return render(request, self.template_name, {'entorno': entorno, 'stage': 'security_question', 'usuario': usuario_input, 'pregunta': pregunta})
-            
-            respuesta = request.POST.get('respuesta_seguridad', '').strip()
-            if not user.security_question.check_respuesta(respuesta):
-                messages.error(request, 'Respuesta incorrecta.')
-                return render(request, self.template_name, {'entorno': entorno, 'stage': 'security_question', 'usuario': usuario_input, 'pregunta': user.security_question.pregunta})
-            
-            request.session['recovery_staff_verified'] = True
-            messages.success(request, 'Verificación de seguridad exitosa.')
-            # Redirigir al mismo stage para que continúe
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'email' if use_email else 'phrase', 'usuario': usuario_input})
+        is_production = entorno in ('produccion', 'production')
 
-        if use_email:
+        stage = request.POST.get('stage', 'email' if is_production else 'phrase')
+
+        if is_production:
             if stage == 'email':
-                if not user.correo:
-                    messages.error(request, 'Este usuario no tiene un correo registrado para recuperar la contraseña.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                usuario_input = request.POST.get('usuario', '').strip()
+                contacto_input = request.POST.get('contacto', '').strip()
+                if not usuario_input or not contacto_input:
+                    messages.error(request, 'Debe ingresar su usuario y correo electrónico o número de teléfono.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
+                try:
+                    user = Usuario.objects.get(usuario=usuario_input, deleted_at__isnull=True)
+                except Usuario.DoesNotExist:
+                    messages.error(request, 'Usuario no encontrado.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
+
+                correo_match = user.correo and user.correo.lower() == contacto_input.lower()
+                telefono_match = getattr(user, 'personal', None) and user.personal.telefono and user.personal.telefono == contacto_input
+                if not correo_match and not telefono_match:
+                    messages.error(request, 'El correo electrónico o número de teléfono ingresado no coincide con los registros del usuario.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
+
+                if user.is_staff and not request.session.get('recovery_staff_verified'):
+                    try:
+                        pregunta = user.security_question.pregunta
+                    except SecurityQuestion.DoesNotExist:
+                        messages.error(request, 'No tiene configurada una pregunta de seguridad. Contacte al Administrador.')
+                        return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'security_question', 'usuario': usuario_input, 'pregunta': pregunta, 'is_production': True})
+
                 codigo = get_random_string(6, allowed_chars='0123456789')
                 request.session['recovery_pending_user_id'] = user.id
                 request.session['recovery_pending_code_hash'] = make_password(codigo)
                 request.session['recovery_pending_code_expires_at'] = (timezone.now() + timedelta(minutes=10)).isoformat()
                 request.session['recovery_pending_verified'] = False
                 remitente = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER or 'no-reply@uptag.edu.ve'
+                
+                if user.correo:
+                    try:
+                        send_mail(
+                            'Recuperación de Contraseña - SGEJ',
+                            f'Su código de verificación para recuperar la contraseña es: {codigo}\n\nEste código vence en 10 minutos.',
+                            remitente,
+                            [user.correo],
+                            fail_silently=False,
+                        )
+                    except Exception as exc:
+                        messages.error(request, f'No fue posible enviar el correo de recuperación: {exc}')
+                        return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
+                messages.success(request, 'Se envió un código de verificación a su medio de contacto. Revise su bandeja de entrada.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input, 'is_production': True})
+
+            elif stage == 'security_question':
+                usuario_input = request.POST.get('usuario', '').strip()
                 try:
-                    send_mail(
-                        'Recuperación de Contraseña - SGEJ',
-                        f'Su código de verificación para recuperar la contraseña es: {codigo}\n\nEste código vence en 10 minutos.',
-                        remitente,
-                        [user.correo],
-                        fail_silently=False,
-                    )
-                except Exception as exc:
-                    messages.error(request, f'No fue posible enviar el correo de recuperación: {exc}')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
-                messages.success(request, 'Se envió un código de verificación a su correo. Revise su bandeja de entrada.')
-                return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input})
-            if stage == 'code':
+                    user = Usuario.objects.get(usuario=usuario_input, deleted_at__isnull=True)
+                except Usuario.DoesNotExist:
+                    messages.error(request, 'Usuario no encontrado.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
+                respuesta = request.POST.get('respuesta_seguridad', '').strip()
+                if not user.security_question.check_respuesta(respuesta):
+                    messages.error(request, 'Respuesta incorrecta.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'security_question', 'usuario': usuario_input, 'pregunta': user.security_question.pregunta, 'is_production': True})
+                request.session['recovery_staff_verified'] = True
+                messages.success(request, 'Verificación de seguridad exitosa.')
+                codigo = get_random_string(6, allowed_chars='0123456789')
+                request.session['recovery_pending_user_id'] = user.id
+                request.session['recovery_pending_code_hash'] = make_password(codigo)
+                request.session['recovery_pending_code_expires_at'] = (timezone.now() + timedelta(minutes=10)).isoformat()
+                request.session['recovery_pending_verified'] = False
+                remitente = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER or 'no-reply@uptag.edu.ve'
+                if user.correo:
+                    try:
+                        send_mail(
+                            'Recuperación de Contraseña - SGEJ',
+                            f'Su código de verificación para recuperar la contraseña es: {codigo}\n\nEste código vence en 10 minutos.',
+                            remitente,
+                            [user.correo],
+                            fail_silently=False,
+                        )
+                    except Exception:
+                        pass
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input, 'is_production': True})
+
+            elif stage == 'code':
                 codigo_ingresado = request.POST.get('recovery_code', '').strip()
                 if not codigo_ingresado:
-                    messages.error(request, 'Debe ingresar el código de verificación enviado por correo.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input})
+                    messages.error(request, 'Debe ingresar el código de verificación.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'is_production': True})
                 code_hash = request.session.get('recovery_pending_code_hash')
                 expires_at = request.session.get('recovery_pending_code_expires_at')
                 if not code_hash or not expires_at:
                     messages.error(request, 'El código de verificación ha expirado o no existe. Solicite uno nuevo.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
                 if timezone.now() > timezone.datetime.fromisoformat(expires_at):
                     request.session.pop('recovery_pending_code_hash', None)
                     request.session.pop('recovery_pending_code_expires_at', None)
                     messages.error(request, 'El código de verificación ha expirado. Solicite uno nuevo.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
                 if not check_password(codigo_ingresado, code_hash):
                     messages.error(request, 'Código de verificación incorrecto.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'usuario': usuario_input})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'code', 'is_production': True})
                 request.session['recovery_pending_verified'] = True
                 messages.success(request, 'Código verificado. Ahora ingrese su nueva contraseña.')
-                return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
-            if stage == 'password':
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'is_production': True})
+
+            elif stage == 'password':
                 pending_id = request.session.get('recovery_pending_user_id')
                 if not pending_id or not request.session.get('recovery_pending_verified'):
-                    messages.error(request, 'Debe completar primero el paso de verificación por correo.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                    messages.error(request, 'Debe completar primero el paso de verificación por código.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
                 try:
                     pending_user = Usuario.objects.get(id=pending_id, deleted_at__isnull=True)
                 except Usuario.DoesNotExist:
@@ -418,20 +436,20 @@ class RecoveryView(View):
                     request.session.pop('recovery_pending_code_expires_at', None)
                     request.session.pop('recovery_pending_verified', None)
                     messages.error(request, 'Usuario de recuperación no encontrado. Inicie de nuevo el proceso.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'usuario': usuario_input})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'email', 'is_production': True})
                 new_password = request.POST.get('new_password', '').strip()
                 new_password_repeat = request.POST.get('new_password_repeat', '').strip()
                 if not new_password:
                     messages.error(request, 'Debe ingresar la nueva contraseña.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'is_production': True})
                 if new_password != new_password_repeat:
                     messages.error(request, 'Las contraseñas no coinciden.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'is_production': True})
                 try:
                     validate_password_strength(new_password)
                 except forms.ValidationError as e:
                     messages.error(request, e.message)
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'is_production': True})
                 pending_user.set_password(new_password)
                 pending_user.save()
                 HistorialContrasena.objects.create(usuario=pending_user, password_hash=pending_user.password)
@@ -441,68 +459,99 @@ class RecoveryView(View):
                 request.session.pop('recovery_pending_verified', None)
                 messages.success(request, 'Contraseña actualizada correctamente. Ahora puede iniciar sesión con su nueva contraseña.')
                 return redirect('usuarios:login')
-        if stage == 'phrase':
-            frase = request.POST.get('frase_seguridad', '').strip()
-            cedula = request.POST.get('cedula', '').strip()
-            nueva_frase_seguridad = request.POST.get('nueva_frase_seguridad', '').strip()
-            if not cedula:
-                messages.error(request, 'Debe ingresar su Cédula.')
-                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
-            if cedula != user.cedula:
-                messages.error(request, 'Cédula incorrecta.')
-                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
-            if nueva_frase_seguridad:
-                if len(nueva_frase_seguridad) < 8:
-                    messages.error(request, 'La nueva Frase de Seguridad debe tener al menos 8 caracteres.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
-                user.set_frase_seguridad(nueva_frase_seguridad)
-            elif frase:
-                if not user.check_frase_seguridad(frase):
-                    messages.error(request, 'Frase de Seguridad o Cédula incorrectos.')
-                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
-            else:
-                messages.error(request, 'Debe ingresar su frase actual o una nueva frase de seguridad.')
-                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
-            request.session['recovery_pending_user_id'] = user.id
-            request.session['recovery_pending_frase'] = nueva_frase_seguridad if nueva_frase_seguridad else ''
-            messages.success(request, 'Frase de seguridad validada. Ahora complete la nueva contraseña.')
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
-        pending_id = request.session.get('recovery_pending_user_id')
-        if not pending_id:
-            messages.error(request, 'Debe completar primero el paso de frase de seguridad.')
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
-        try:
-            pending_user = Usuario.objects.get(id=pending_id, deleted_at__isnull=True)
-        except Usuario.DoesNotExist:
-            request.session.pop('recovery_pending_user_id', None)
-            request.session.pop('recovery_pending_frase', None)
-            messages.error(request, 'Usuario de recuperación no encontrado. Inicie de nuevo el proceso.')
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase'})
-        new_password = request.POST.get('new_password', '').strip()
-        new_password_repeat = request.POST.get('new_password_repeat', '').strip()
-        if not new_password:
-            messages.error(request, 'Debe ingresar la nueva contraseña.')
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
-        if new_password != new_password_repeat:
-            messages.error(request, 'Las contraseñas no coinciden.')
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
-        try:
-            validate_password_strength(new_password)
-        except forms.ValidationError as e:
-            messages.error(request, e.message)
-            return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input})
-        pending_frase = request.session.pop('recovery_pending_frase', '')
-        if pending_frase:
-            pending_user.set_frase_seguridad(pending_frase)
-        pending_user.set_password(new_password)
-        pending_user.save()
-        HistorialContrasena.objects.create(
-            usuario=pending_user,
-            password_hash=pending_user.password
-        )
-        request.session.pop('recovery_pending_user_id', None)
-        messages.success(request, 'Contraseña actualizada correctamente. Ahora puede iniciar sesión con su nueva contraseña.')
-        return redirect('usuarios:login')
+
+        else:
+            # Flujo Local
+            usuario_input = request.POST.get('usuario', '').strip()
+            if not usuario_input:
+                messages.error(request, 'Debe ingresar su nombre de usuario.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+            try:
+                user = Usuario.objects.get(usuario=usuario_input, deleted_at__isnull=True)
+            except Usuario.DoesNotExist:
+                messages.error(request, 'Usuario no encontrado.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+
+            if user.is_staff and not request.session.get('recovery_staff_verified'):
+                if stage != 'security_question':
+                    try:
+                        pregunta = user.security_question.pregunta
+                    except SecurityQuestion.DoesNotExist:
+                        messages.error(request, 'No tiene configurada una pregunta de seguridad. Contacte al Administrador.')
+                        return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'security_question', 'usuario': usuario_input, 'pregunta': pregunta, 'is_production': False})
+                respuesta = request.POST.get('respuesta_seguridad', '').strip()
+                if not user.security_question.check_respuesta(respuesta):
+                    messages.error(request, 'Respuesta incorrecta.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'security_question', 'usuario': usuario_input, 'pregunta': user.security_question.pregunta, 'is_production': False})
+                request.session['recovery_staff_verified'] = True
+                messages.success(request, 'Verificación de seguridad exitosa.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'usuario': usuario_input, 'is_production': False})
+
+            if stage == 'phrase':
+                frase = request.POST.get('frase_seguridad', '').strip()
+                cedula = request.POST.get('cedula', '').strip()
+                nueva_frase_seguridad = request.POST.get('nueva_frase_seguridad', '').strip()
+                if not cedula:
+                    messages.error(request, 'Debe ingresar su Cédula.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+                if cedula != user.cedula:
+                    messages.error(request, 'Cédula incorrecta.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+                if nueva_frase_seguridad:
+                    if len(nueva_frase_seguridad) < 8:
+                        messages.error(request, 'La nueva Frase de Seguridad debe tener al menos 8 caracteres.')
+                        return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+                    user.set_frase_seguridad(nueva_frase_seguridad)
+                elif frase:
+                    if not user.check_frase_seguridad(frase):
+                        messages.error(request, 'Frase de Seguridad o Cédula incorrectos.')
+                        return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+                else:
+                    messages.error(request, 'Debe ingresar su frase actual o una nueva frase de seguridad.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+                request.session['recovery_pending_user_id'] = user.id
+                request.session['recovery_pending_frase'] = nueva_frase_seguridad if nueva_frase_seguridad else ''
+                messages.success(request, 'Frase de seguridad validada. Ahora complete la nueva contraseña.')
+                return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'usuario': usuario_input, 'is_production': False})
+
+            elif stage == 'password':
+                pending_id = request.session.get('recovery_pending_user_id')
+                if not pending_id:
+                    messages.error(request, 'Debe completar primero el paso de frase de seguridad.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+                try:
+                    pending_user = Usuario.objects.get(id=pending_id, deleted_at__isnull=True)
+                except Usuario.DoesNotExist:
+                    request.session.pop('recovery_pending_user_id', None)
+                    request.session.pop('recovery_pending_frase', None)
+                    messages.error(request, 'Usuario de recuperación no encontrado. Inicie de nuevo el proceso.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'phrase', 'is_production': False})
+                new_password = request.POST.get('new_password', '').strip()
+                new_password_repeat = request.POST.get('new_password_repeat', '').strip()
+                if not new_password:
+                    messages.error(request, 'Debe ingresar la nueva contraseña.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'is_production': False})
+                if new_password != new_password_repeat:
+                    messages.error(request, 'Las contraseñas no coinciden.')
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'is_production': False})
+                try:
+                    validate_password_strength(new_password)
+                except forms.ValidationError as e:
+                    messages.error(request, e.message)
+                    return render(request, self.template_name, {'entorno': entorno, 'stage': 'password', 'is_production': False})
+                pending_frase = request.session.pop('recovery_pending_frase', '')
+                if pending_frase:
+                    pending_user.set_frase_seguridad(pending_frase)
+                pending_user.set_password(new_password)
+                pending_user.save()
+                HistorialContrasena.objects.create(
+                    usuario=pending_user,
+                    password_hash=pending_user.password
+                )
+                request.session.pop('recovery_pending_user_id', None)
+                messages.success(request, 'Contraseña actualizada correctamente. Ahora puede iniciar sesión con su nueva contraseña.')
+                return redirect('usuarios:login')
 
 class RegisterView(View):
     template_name = 'auth/register.html'

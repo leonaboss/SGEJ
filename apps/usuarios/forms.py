@@ -310,3 +310,43 @@ class PasswordChangeForm(forms.Form):
         password_plana = self.cleaned_data['nueva_password']
         self.usuario.set_password(password_plana)
         self.usuario.save(update_fields=['password'])
+
+
+class RecoveryProductionForm(forms.Form):
+    usuario = forms.CharField(
+        label='Usuario', 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su usuario'})
+    )
+    contacto = forms.CharField(
+        label='Correo Electrónico o Teléfono', 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'correo@ejemplo.com o teléfono'})
+    )
+
+
+class RecoveryOtpForm(forms.Form):
+    recovery_code = forms.CharField(
+        label='Código de Verificación', 
+        widget=forms.TextInput(attrs={'class': 'form-control font-monospace', 'placeholder': 'Ingrese el código de 6 dígitos'})
+    )
+
+
+class RecoveryLocalForm(forms.Form):
+    usuario = forms.CharField(
+        label='Usuario', 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su usuario'})
+    )
+    cedula = forms.CharField(
+        label='Cédula de Identidad', 
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'})
+    )
+    frase_seguridad = forms.CharField(
+        label='Frase de Seguridad Actual', 
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}), 
+        required=False
+    )
+    nueva_frase_seguridad = forms.CharField(
+        label='Nueva Frase de Seguridad (Opcional)', 
+        widget=forms.PasswordInput(attrs={'class': 'form-control'}), 
+        required=False
+    )
+
