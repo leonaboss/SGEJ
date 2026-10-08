@@ -306,11 +306,22 @@ class RecoveryView(View):
             return redirect('usuarios:recovery')
 
         if is_production:
-            if request.session.get('recovery_pending_verified'):
+            expires_at = request.session.get('recovery_pending_code_expires_at')
+            is_code_active = False
+            if expires_at:
+                try:
+                    if timezone.now() <= timezone.datetime.fromisoformat(expires_at):
+                        is_code_active = True
+                except Exception:
+                    pass
+
+            if request.session.get('recovery_pending_verified') and is_code_active:
                 stage = 'password'
-            elif request.session.get('recovery_pending_user_id'):
+            elif request.session.get('recovery_pending_user_id') and is_code_active:
                 stage = 'code'
             else:
+                for key in ['recovery_pending_user_id', 'recovery_pending_code_hash', 'recovery_pending_code_expires_at', 'recovery_pending_verified', 'recovery_staff_verified']:
+                    request.session.pop(key, None)
                 stage = 'email'
         else:
             stage = 'password' if request.session.get('recovery_pending_user_id') else 'phrase'
