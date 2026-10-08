@@ -300,6 +300,11 @@ class RecoveryView(View):
         entorno = getattr(settings, 'ENTORNO', 'localhost')
         is_production = str(entorno).lower() in ('produccion', 'production')
 
+        if request.GET.get('reset') == '1':
+            for key in ['recovery_pending_user_id', 'recovery_pending_code_hash', 'recovery_pending_code_expires_at', 'recovery_pending_verified', 'recovery_staff_verified']:
+                request.session.pop(key, None)
+            return redirect('usuarios:recovery')
+
         if is_production:
             if request.session.get('recovery_pending_verified'):
                 stage = 'password'
