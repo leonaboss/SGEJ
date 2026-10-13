@@ -399,26 +399,6 @@ class ActuacionListView(LoginRequiredMixin, ListView):
             qs = qs.filter(usuario=user)
         qs = qs.select_related('usuario', 'content_type')
         
-        expediente_ct = ContentType.objects.get_for_model(Expediente)
-        archived_expediente_ids = Expediente.objects.filter(is_archivado=True).values_list('id', flat=True)
-        
-        # 1. Acciones en expedientes NO archivados
-        qs_active = qs.filter(content_type=expediente_ct).exclude(object_id__in=archived_expediente_ids)
-        
-        # 2. Acciones específicas de archivar/desarchivar en expedientes (aunque estén archivados)
-        qs_archive_actions = qs.filter(
-            content_type=expediente_ct, 
-            object_id__in=archived_expediente_ids
-        ).filter(
-            Q(descripcion__icontains="archivado por") | Q(descripcion__icontains="desarchivado por")
-        )
-        
-        # 3. Acciones generales (sin expediente vinculado)
-        qs_general = qs.filter(content_type__isnull=True)
-        
-        # Combinar y ordenar
-        qs = (qs_active | qs_archive_actions | qs_general).distinct()
-        
         q = self.request.GET.get('q', '').strip()
         if q:
             qs = qs.filter(descripcion__icontains=q)
@@ -617,6 +597,11 @@ class CargoCreateView(CatalogRequiredMixin, View):
             cargo = form.save(commit=False)
             cargo.usuario = request.user
             cargo.save()
+            Actuacion.objects.create(
+                content_object=cargo,
+                descripcion=f"Cargo '{cargo}' registrado por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
             messages.success(request, 'Cargo registrado exitosamente.')
             return redirect('expedientes:cargo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
@@ -632,6 +617,11 @@ class CargoUpdateView(CatalogRequiredMixin, View):
         form = CargoForm(request.POST, instance=obj)
         if form.is_valid():
             form.save()
+            Actuacion.objects.create(
+                content_object=obj,
+                descripcion=f"Cargo '{obj}' actualizado por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
             messages.success(request, 'Cargo actualizado.')
             return redirect('expedientes:cargo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar', 'cargo': obj})
@@ -639,6 +629,11 @@ class CargoUpdateView(CatalogRequiredMixin, View):
 class CargoDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(Cargo, pk=pk, deleted_at__isnull=True)
+        Actuacion.objects.create(
+            content_object=obj,
+            descripcion=f"Cargo '{obj}' eliminado por {request.user.get_full_name()}",
+            usuario=request.user,
+        )
         obj.deleted_at = timezone.now()
         obj.save(update_fields=['deleted_at'])
         messages.success(request, 'Cargo eliminado lógicamente.')
@@ -679,6 +674,11 @@ class MotivoCreateView(CatalogRequiredMixin, View):
             motivo = form.save(commit=False)
             motivo.usuario = request.user
             motivo.save()
+            Actuacion.objects.create(
+                content_object=motivo,
+                descripcion=f"Motivo '{motivo}' registrado por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
             messages.success(request, 'Motivo registrado.')
             return redirect('expedientes:motivo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
@@ -694,6 +694,11 @@ class MotivoUpdateView(CatalogRequiredMixin, View):
         form = MotivoForm(request.POST, instance=obj)
         if form.is_valid():
             form.save()
+            Actuacion.objects.create(
+                content_object=obj,
+                descripcion=f"Motivo '{obj}' actualizado por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
             messages.success(request, 'Motivo actualizado.')
             return redirect('expedientes:motivo_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar'})
@@ -701,6 +706,11 @@ class MotivoUpdateView(CatalogRequiredMixin, View):
 class MotivoDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(Motivo, pk=pk, deleted_at__isnull=True)
+        Actuacion.objects.create(
+            content_object=obj,
+            descripcion=f"Motivo '{obj}' eliminado por {request.user.get_full_name()}",
+            usuario=request.user,
+        )
         obj.deleted_at = timezone.now()
         obj.save(update_fields=['deleted_at'])
         messages.success(request, 'Motivo eliminado.')
@@ -726,6 +736,11 @@ class TribunalCreateView(CatalogRequiredMixin, View):
             tribunal = form.save(commit=False)
             tribunal.usuario = request.user
             tribunal.save()
+            Actuacion.objects.create(
+                content_object=tribunal,
+                descripcion=f"Tribunal '{tribunal}' registrado por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
             messages.success(request, 'Tribunal registrado.')
             return redirect('expedientes:tribunal_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Crear'})
@@ -741,6 +756,11 @@ class TribunalUpdateView(CatalogRequiredMixin, View):
         form = TribunalForm(request.POST, instance=obj)
         if form.is_valid():
             form.save()
+            Actuacion.objects.create(
+                content_object=obj,
+                descripcion=f"Tribunal '{obj}' actualizado por {request.user.get_full_name()}",
+                usuario=request.user,
+            )
             messages.success(request, 'Tribunal actualizado.')
             return redirect('expedientes:tribunal_list')
         return render(request, self.template_name, {'form': form, 'accion': 'Editar'})
@@ -748,6 +768,11 @@ class TribunalUpdateView(CatalogRequiredMixin, View):
 class TribunalDeleteView(CatalogRequiredMixin, View):
     def post(self, request, pk):
         obj = get_object_or_404(Tribunal, pk=pk, deleted_at__isnull=True)
+        Actuacion.objects.create(
+            content_object=obj,
+            descripcion=f"Tribunal '{obj}' eliminado por {request.user.get_full_name()}",
+            usuario=request.user,
+        )
         obj.deleted_at = timezone.now()
         obj.save(update_fields=['deleted_at'])
         messages.success(request, 'Tribunal eliminado.')

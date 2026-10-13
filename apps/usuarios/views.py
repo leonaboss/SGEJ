@@ -14,6 +14,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from .models import Usuario, HistorialContrasena, BitacoraAuditoria, SecurityQuestion
+from apps.infraestructura.signals import _registrar_en_bitacora, _extraer_ip
 from .forms import UsuarioCreationForm, UsuarioChangeForm, PasswordChangeForm, RegistroUsuarioForm, validate_password_strength
 
 class RoleRequiredMixin(LoginRequiredMixin):
@@ -59,8 +60,10 @@ class LoginView(View):
             messages.error(request, 'Todos los campos son obligatorios.')
             return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
         user = authenticate(request, username=username, password=password)
+        ip = _extraer_ip(request)
         if user is not None:
             if user.is_bloqueado:
+                _registrar_en_bitacora(user, 'LOGIN_BLOQUEADO', 'SEGURIDAD', f"Intento de acceso a cuenta bloqueada '{user.usuario}' desde IP {ip}", ip)
                 messages.error(request, 'Su cuenta ha sido bloqueada por múltiples intentos fallidos. Contacte al Administrador General.')
                 return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
             user.intentos_fallidos = 0
@@ -78,12 +81,15 @@ class LoginView(View):
                 target_user.intentos_fallidos += 1
                 if target_user.intentos_fallidos >= 3:
                     target_user.is_bloqueado = True
+                    _registrar_en_bitacora(target_user, 'BLOQUEO_CUENTA', 'SEGURIDAD', f"Cuenta '{username}' bloqueada tras 3 intentos fallidos desde IP {ip}", ip)
                     messages.error(request, 'Cuenta bloqueada tras 3 intentos fallidos. Contacte al Administrador General.')
                 else:
                     remaining = 3 - target_user.intentos_fallidos
+                    _registrar_en_bitacora(target_user, 'LOGIN_FALLIDO', 'SEGURIDAD', f"Intento de inicio de sesión fallido para '{username}' ({remaining} intentos restantes) desde IP {ip}", ip)
                     messages.error(request, f'Credenciales inválidas. Le quedan {remaining} intento(s).')
                 target_user.save(update_fields=['intentos_fallidos', 'is_bloqueado'])
             except Usuario.DoesNotExist:
+                _registrar_en_bitacora(None, 'LOGIN_FALLIDO', 'SEGURIDAD', f"Intento de inicio de sesión con usuario inexistente '{username}' desde IP {ip}", ip)
                 messages.error(request, 'Credenciales inválidas.')
             return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
 
@@ -127,6 +133,8 @@ class TOTPVerifyView(View):
             messages.success(request, 'Verificación de dos factores exitosa.')
             return redirect('expedientes:dashboard')
         
+        ip = _extraer_ip(request)
+        _registrar_en_bitacora(user, '2FA_FALLIDO', 'SEGURIDAD', f"Frase de seguridad incorrecta en verificación 2FA para '{user.usuario}' desde IP {ip}", ip)
         messages.error(request, 'Frase de seguridad incorrecta. Intente de nuevo.')
         return render(request, self.template_name, {'user': user, 'action_label': 'Autenticación de Dos Factores'})
 
