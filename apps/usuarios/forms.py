@@ -31,10 +31,15 @@ class UsuarioCreationForm(forms.ModelForm):
         required=True,
     )
     frase_seguridad = forms.CharField(
-        label='Frase de Seguridad', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        label='Frase de Seguridad', widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'new-password',
+            'data-lpignore': 'true',
+            'data-form-type': 'other'
+        }),
         min_length=8,
         required=True,
-        help_text='Se usará para recuperar su contraseña si olvida el correo o la contraseña.',
+        help_text='Se usará para recuperar su contraseña y autenticación 2FA.',
     )
 
     def __init__(self, *args, **kwargs):
@@ -85,7 +90,9 @@ class UsuarioChangeForm(forms.ModelForm):
         label='Frase de Seguridad', 
         widget=forms.PasswordInput(attrs={
             'class': 'form-control', 
-            'autocomplete': 'off',
+            'autocomplete': 'new-password',
+            'data-lpignore': 'true',
+            'data-form-type': 'other',
             'readonly': False,
         }),
         required=False,
@@ -204,7 +211,12 @@ class RegistroUsuarioForm(forms.ModelForm):
         required=True,
     )
     frase_seguridad = forms.CharField(
-        label='Frase de Seguridad', widget=forms.PasswordInput(attrs={'class': 'form-control'}),
+        label='Frase de Seguridad', widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'new-password',
+            'data-lpignore': 'true',
+            'data-form-type': 'other'
+        }),
         min_length=8,
         required=True,
     )
@@ -341,12 +353,22 @@ class RecoveryLocalForm(forms.Form):
     )
     frase_seguridad = forms.CharField(
         label='Frase de Seguridad Actual', 
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}), 
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'new-password',
+            'data-lpignore': 'true',
+            'data-form-type': 'other'
+        }), 
         required=False
     )
     nueva_frase_seguridad = forms.CharField(
         label='Nueva Frase de Seguridad (Opcional)', 
-        widget=forms.PasswordInput(attrs={'class': 'form-control'}), 
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'new-password',
+            'data-lpignore': 'true',
+            'data-form-type': 'other'
+        }), 
         required=False
     )
 

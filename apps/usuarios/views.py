@@ -66,10 +66,9 @@ class LoginView(View):
             user.intentos_fallidos = 0
             user.save(update_fields=['intentos_fallidos'])
             
-            # --- 2FA TEMPORALMENTE DESACTIVADO ---
-            # if user.is_2fa_enabled:
-            #     request.session['2fa_user_id'] = user.id
-            #     return redirect('usuarios:totp_verify')
+            if user.is_2fa_enabled:
+                request.session['2fa_user_id'] = user.id
+                return redirect('usuarios:totp_verify')
             
             login(request, user)
             return redirect('expedientes:dashboard')
@@ -102,7 +101,12 @@ class TOTPVerifyView(View):
         user_id = request.session.get('2fa_user_id')
         if not user_id:
             return redirect('usuarios:login')
-        return render(request, self.template_name)
+        try:
+            user = Usuario.objects.get(id=user_id)
+        except Usuario.DoesNotExist:
+            return redirect('usuarios:login')
+        return render(request, self.template_name, {'user': user, 'action_label': 'Autenticación de Dos Factores'})
+
     def post(self, request):
         user_id = request.session.get('2fa_user_id')
         if not user_id:
@@ -111,18 +115,20 @@ class TOTPVerifyView(View):
             user = Usuario.objects.get(id=user_id)
         except Usuario.DoesNotExist:
             return redirect('usuarios:login')
-        token = request.POST.get('token', '').strip()
-        if not token:
-            messages.error(request, 'Ingrese el código de verificación.')
-            return render(request, self.template_name)
-        device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
-        if device and device.verify_token(token):
+        
+        frase = request.POST.get('frase_seguridad', '').strip()
+        if not frase:
+            messages.error(request, 'Ingrese su frase de seguridad.')
+            return render(request, self.template_name, {'user': user, 'action_label': 'Autenticación de Dos Factores'})
+        
+        if user.check_frase_seguridad(frase):
             del request.session['2fa_user_id']
             login(request, user)
             messages.success(request, 'Verificación de dos factores exitosa.')
             return redirect('expedientes:dashboard')
-        messages.error(request, 'Código de verificación inválido. Intente de nuevo.')
-        return render(request, self.template_name)
+        
+        messages.error(request, 'Frase de seguridad incorrecta. Intente de nuevo.')
+        return render(request, self.template_name, {'user': user, 'action_label': 'Autenticación de Dos Factores'})
 
 
 class Setup2FAView(LoginRequiredMixin, View):
