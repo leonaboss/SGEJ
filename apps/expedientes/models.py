@@ -407,6 +407,7 @@ class Notificacion(models.Model):
     mensaje = models.TextField()
     tipo_alerta = models.TextField()
     leido = models.BooleanField(default=False)
+    url_destino = models.CharField(max_length=255, blank=True, null=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 

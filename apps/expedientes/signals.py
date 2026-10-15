@@ -38,6 +38,19 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
             descripcion=desc,
             usuario=instance.usuario,
         )
+        # Notificar al dueño del expediente
+        NotificacionService.crear(
+            usuario=instance.usuario,
+            mensaje=f"Se ha registrado exitosamente su expediente {instance.numero_expediente}.",
+            tipo_alerta='expediente',
+            url_destino=f"/expedientes/{instance.pk}/"
+        )
+        # Notificar a todos los administradores (ojo de dios)
+        admins = Usuario.objects.filter(rol='ADMIN', is_active=True)
+        msg_admin = f"{instance.usuario.usuario} creó el expediente {instance.numero_expediente} en {instance.get_tipo_modulo_display()}"
+        for admin in admins:
+            if admin != instance.usuario:
+                NotificacionService.crear(usuario=admin, mensaje=msg_admin, tipo_alerta='auditoria', url_destino=f"/expedientes/{instance.pk}/")
         return
 
     if not instance.pk:
@@ -100,16 +113,17 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
                 usuario=instance.usuario,
                 mensaje=desc,
                 tipo_alerta='expediente',
+                url_destino=f"/expedientes/{instance.pk}/"
             )
 
         # Notificar a administradores con detalle del módulo
         from apps.usuarios.models import Usuario
         admins = Usuario.objects.filter(rol='ADMIN', is_active=True)
         modulo_nombre = instance.get_tipo_modulo_display()
-        mensaje = f"{instance.usuario.usuario} {'creó' if created else 'editó'} el expediente {instance.numero_expediente} en el módulo de {modulo_nombre}"
+        mensaje = f"{instance.usuario.usuario} actualizó el expediente {instance.numero_expediente} en {modulo_nombre}: {', '.join(cambios)}"
         for admin in admins:
             if admin != instance.usuario:
-                NotificacionService.crear(usuario=admin, mensaje=mensaje, tipo_alerta='auditoria')
+                NotificacionService.crear(usuario=admin, mensaje=mensaje, tipo_alerta='auditoria', url_destino=f"/expedientes/{instance.pk}/")
 
 
 @receiver(post_save, sender=Actuacion)

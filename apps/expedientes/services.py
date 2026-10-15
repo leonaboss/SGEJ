@@ -123,7 +123,7 @@ class NotificacionService:
     """Gestión de notificaciones in-app del sistema."""
 
     @staticmethod
-    def crear(usuario, mensaje, tipo_alerta='info'):
+    def crear(usuario, mensaje, tipo_alerta='info', url_destino=None):
         """Crea una notificación para un usuario."""
         if not usuario or not usuario.pk:
             return None
@@ -131,6 +131,7 @@ class NotificacionService:
             usuario=usuario,
             mensaje=mensaje,
             tipo_alerta=tipo_alerta,
+            url_destino=url_destino,
         )
 
 

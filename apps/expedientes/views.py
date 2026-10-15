@@ -785,17 +785,12 @@ class NotificacionListView(LoginRequiredMixin, ListView):
     context_object_name = 'notificaciones'
     paginate_by = 20
 
-    def get(self, request, *args, **kwargs):
-        # Marcar todas como leídas al entrar
-        Notificacion.objects.filter(usuario=self.request.user, leido=False, deleted_at__isnull=True).update(leido=True)
-        return super().get(request, *args, **kwargs)
-
     def get_queryset(self):
         return Notificacion.objects.filter(usuario=self.request.user, deleted_at__isnull=True).order_by('-fecha_creacion')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['no_leidas'] = 0 # Siempre 0 porque ya las marcamos como leídas
+        context['no_leidas'] = Notificacion.objects.filter(usuario=self.request.user, leido=False, deleted_at__isnull=True).count()
         return context
 
 
