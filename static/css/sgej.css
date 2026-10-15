@@ -818,14 +818,15 @@ body {
     gap: var(--spacing-md);
   }
 
-  .sgej-table-container {
+  .sgej-table-container, .table-responsive {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
 @media (max-width: 575.98px) {
   .sgej-cards-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .sgej-count-card {
@@ -833,11 +834,37 @@ body {
   }
 
   .sgej-count-card-number {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
   }
 
   .sgej-content {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
+  }
+
+  .sgej-navbar {
+    padding: 0 var(--spacing-sm);
+  }
+
+  .navbar-logo-img {
+    height: 32px;
+  }
+
+  /* Tables compactas en móviles */
+  .table th, .table td {
+    padding: 0.5rem 0.375rem;
+    font-size: var(--font-size-xs);
+  }
+
+  /* Botones y formularios apilados */
+  .btn-group-sm-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .btn-group-sm-mobile .btn {
+    width: 100%;
   }
 }
 
