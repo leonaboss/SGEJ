@@ -192,7 +192,7 @@ class BitacoraAuditoria(models.Model):
 
     @property
     def es_sospechoso(self):
-        return bool(self.tipo)
+        return bool(self.tipo) or self.accion in ('SEGURIDAD', 'HONEYPOT', 'BLOQUEO_CUENTA', 'LOGIN_BLOQUEADO')
 
     @property
     def alertas_lista(self):
@@ -261,9 +261,12 @@ class BitacoraAuditoria(models.Model):
         import re
         if self.usuario:
             return self.usuario.get_full_name() or self.usuario.usuario
-        m = re.search(r'fallido para: (.+)$', self.descripcion)
+        
+        m = re.search(r"(?:para|cuenta|inexistente|payload:)\s+['\"]?([\w@\.\-]+)['\"]?", self.descripcion, re.IGNORECASE)
         if m:
-            return f"Intento: {m.group(1)}"
+            target = m.group(1)
+            return f"Externo (Dirigido a: {target})"
+        
         if self.accion == 'HONEYPOT':
             return 'Sistema'
         return f"Externo ({self.ip_address})"

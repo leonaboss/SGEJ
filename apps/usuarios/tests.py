@@ -7,7 +7,7 @@ from .forms import validate_password_strength
 from .models import Usuario, HistorialContrasena
 from apps.expedientes.models import Personal
 
-fake = Faker('es_VE')
+fake = Faker('es_ES')
 
 class UsuarioModelTest(TestCase):
     def setUp(self):

@@ -59,6 +59,24 @@ class LoginView(View):
         if not username or not password:
             messages.error(request, 'Todos los campos son obligatorios.')
             return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
+
+        # Detección de inyección SQL / XSS en login
+        import re
+        sql_pattern = re.compile(r"(union|select|insert|delete|drop|update|from|where|--|#|\')", re.IGNORECASE)
+        xss_pattern = re.compile(r"(<script|onerror|onload|javascript:|<iframe|eval\(|alert\()", re.IGNORECASE)
+        ip = _extraer_ip(request)
+
+        if sql_pattern.search(username) or sql_pattern.search(password) or xss_pattern.search(username) or xss_pattern.search(password):
+            _registrar_en_bitacora(
+                None,
+                'SEGURIDAD',
+                'SEGURIDAD',
+                f"Intento de inyección detectado en login desde IP {ip} con payload: {username[:50]}",
+                ip
+            )
+            messages.error(request, 'Credenciales inválidas.')
+            return render(request, self.template_name, {'RECAPTCHA_SITE_KEY': settings.RECAPTCHA_SITE_KEY})
+
         user = authenticate(request, username=username, password=password)
         ip = _extraer_ip(request)
         if user is not None:
@@ -81,11 +99,11 @@ class LoginView(View):
                 target_user.intentos_fallidos += 1
                 if target_user.intentos_fallidos >= 3:
                     target_user.is_bloqueado = True
-                    _registrar_en_bitacora(target_user, 'BLOQUEO_CUENTA', 'SEGURIDAD', f"Cuenta '{username}' bloqueada tras 3 intentos fallidos desde IP {ip}", ip)
+                    _registrar_en_bitacora(None, 'BLOQUEO_CUENTA', 'SEGURIDAD', f"Cuenta '{username}' bloqueada tras 3 intentos fallidos desde IP {ip}", ip)
                     messages.error(request, 'Cuenta bloqueada tras 3 intentos fallidos. Contacte al Administrador General.')
                 else:
                     remaining = 3 - target_user.intentos_fallidos
-                    _registrar_en_bitacora(target_user, 'LOGIN_FALLIDO', 'SEGURIDAD', f"Intento de inicio de sesión fallido para '{username}' ({remaining} intentos restantes) desde IP {ip}", ip)
+                    _registrar_en_bitacora(None, 'LOGIN_FALLIDO', 'SEGURIDAD', f"Intento de inicio de sesión fallido para '{username}' ({remaining} intentos restantes) desde IP {ip}", ip)
                     messages.error(request, f'Credenciales inválidas. Le quedan {remaining} intento(s).')
                 target_user.save(update_fields=['intentos_fallidos', 'is_bloqueado'])
             except Usuario.DoesNotExist:
@@ -794,7 +812,7 @@ class BitacoraListView(RoleRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        qs = BitacoraAuditoria.objects.filter(usuario__isnull=False)
+        qs = BitacoraAuditoria.objects.all()
 
         usuario_id = self.request.GET.get('usuario', '').strip()
         accion = self.request.GET.get('accion', '').strip()
@@ -811,7 +829,15 @@ class BitacoraListView(RoleRequiredMixin, ListView):
         if fecha_hasta:
             qs = qs.filter(created_at__lte=f'{fecha_hasta} 23:59:59')
         if q:
-            qs = qs.filter(descripcion__icontains=q) | qs.filter(modulo__icontains=q) | qs.filter(accion__icontains=q) | qs.filter(usuario__usuario__icontains=q)
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(descripcion__icontains=q) |
+                Q(modulo__icontains=q) |
+                Q(accion__icontains=q) |
+                Q(tipo__icontains=q) |
+                Q(usuario__usuario__icontains=q) |
+                Q(ip_address__icontains=q)
+            )
         return qs
 
     def get_context_data(self, **kwargs):
