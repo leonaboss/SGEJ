@@ -117,7 +117,6 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
             )
 
         # Notificar a administradores con detalle del módulo
-        from apps.usuarios.models import Usuario
         admins = Usuario.objects.filter(rol='ADMIN', is_active=True)
         modulo_nombre = instance.get_tipo_modulo_display()
         mensaje = f"{instance.usuario.usuario} actualizó el expediente {instance.numero_expediente} en {modulo_nombre}: {', '.join(cambios)}"
