@@ -9,10 +9,6 @@
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-outline-dark"><i class="bi bi-check2-all me-1"></i>Marcar todas leídas</button>
             </form>
-            <form method="post" action="{% url 'expedientes:notificacion_limpiar_todas' %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Limpiar historial</button>
-            </form>
         </div>
     </div>
     <div class="card shadow-sm border-0">

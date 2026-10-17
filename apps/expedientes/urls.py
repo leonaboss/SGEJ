@@ -21,7 +21,6 @@ urlpatterns = [
     path('actuaciones/', views.ActuacionListView.as_view(), name='actuacion_list'),
     path('actuaciones/editar/<int:pk>/', views.ActuacionUpdateView.as_view(), name='actuacion_update'),
     path('actuaciones/eliminar/<int:pk>/', views.ActuacionDeleteView.as_view(), name='actuacion_delete'),
-    path('actuaciones/limpiar-todas/', views.ActuacionLimpiarTodasView.as_view(), name='actuacion_limpiar_todas'),
     path('expediente/<int:expediente_pk>/actuacion/crear/', views.ActuacionCreateView.as_view(), name='actuacion_create'),
     path('expediente/<int:expediente_pk>/audiencia/crear/', views.AudienciaAgendaCreateView.as_view(), name='audiencia_create'),
 
@@ -69,7 +68,6 @@ urlpatterns = [
 
     path('notificaciones/', views.NotificacionListView.as_view(), name='notificacion_list'),
     path('notificaciones/marcar-todas-leidas/', views.NotificacionMarcarTodasLeidasView.as_view(), name='notificacion_marcar_todas_leidas'),
-    path('notificaciones/limpiar-todas/', views.NotificacionLimpiarTodasView.as_view(), name='notificacion_limpiar_todas'),
 
     path('exportar/expedientes/', views.ExportarExpedientesExcelView.as_view(), name='exportar_expedientes'),
     path('exportar/personal/', views.ExportarPersonalExcelView.as_view(), name='exportar_personal'),

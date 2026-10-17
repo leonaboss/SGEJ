@@ -540,28 +540,6 @@ class NotificacionMarcarTodasLeidasView(LoginRequiredMixin, View):
         messages.success(request, 'Todas las notificaciones marcadas como leídas.')
         return redirect('expedientes:notificacion_list')
 
-class NotificacionLimpiarTodasView(LoginRequiredMixin, View):
-    def post(self, request):
-        # Marcar como leídas y borradas lógicamente para asegurar que el contador se limpie
-        notificaciones = Notificacion.objects.filter(usuario=request.user, deleted_at__isnull=True)
-        now = timezone.now()
-        for n in notificaciones:
-            n.leido = True
-            n.deleted_at = now
-        Notificacion.objects.bulk_update(notificaciones, ['leido', 'deleted_at'])
-        messages.success(request, 'Historial de notificaciones limpiado.')
-        return redirect('expedientes:notificacion_list')
-
-class ActuacionLimpiarTodasView(LoginRequiredMixin, View):
-    def post(self, request):
-        # El administrador puede limpiar todo, otros usuarios solo lo suyo
-        if request.user.rol == 'ADMIN':
-            Actuacion.objects.all().delete()
-        else:
-            Actuacion.objects.filter(usuario=request.user).delete()
-        messages.success(request, 'Historial de actuaciones limpiado.')
-        return redirect('expedientes:actuacion_list')
-
 
 
 class CargoListView(CatalogRequiredMixin, ListView):

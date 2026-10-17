@@ -23,7 +23,7 @@ def registrar_actuacion_documento(sender, instance, created, **kwargs):
                 usuario=instance.expediente.usuario,
                 mensaje=desc,
                 tipo_alerta='documento',
-                url_destino=f"/expedientes/{instance.expediente.pk}/"
+                url_destino=f"/expediente/{instance.expediente.pk}/"
             )
         
         # Notificar a administradores (ojo de dios)

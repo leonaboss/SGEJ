@@ -43,14 +43,14 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
             usuario=instance.usuario,
             mensaje=f"Se ha registrado exitosamente su expediente {instance.numero_expediente}.",
             tipo_alerta='expediente',
-            url_destino=f"/expedientes/{instance.pk}/"
+            url_destino=f"/expediente/{instance.pk}/"
         )
         # Notificar a todos los administradores (ojo de dios)
         admins = Usuario.objects.filter(rol='ADMIN', is_active=True)
         msg_admin = f"{instance.usuario.usuario} creó el expediente {instance.numero_expediente} en {instance.get_tipo_modulo_display()}"
         for admin in admins:
             if admin != instance.usuario:
-                NotificacionService.crear(usuario=admin, mensaje=msg_admin, tipo_alerta='auditoria', url_destino=f"/expedientes/{instance.pk}/")
+                NotificacionService.crear(usuario=admin, mensaje=msg_admin, tipo_alerta='auditoria', url_destino=f"/expediente/{instance.pk}/")
         return
 
     if not instance.pk:
@@ -113,7 +113,7 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
                 usuario=instance.usuario,
                 mensaje=desc,
                 tipo_alerta='expediente',
-                url_destino=f"/expedientes/{instance.pk}/"
+                url_destino=f"/expediente/{instance.pk}/"
             )
 
         # Notificar a administradores con detalle del módulo
@@ -122,7 +122,7 @@ def registrar_actuacion_expediente(sender, instance, created, **kwargs):
         mensaje = f"{instance.usuario.usuario} actualizó el expediente {instance.numero_expediente} en {modulo_nombre}: {', '.join(cambios)}"
         for admin in admins:
             if admin != instance.usuario:
-                NotificacionService.crear(usuario=admin, mensaje=mensaje, tipo_alerta='auditoria', url_destino=f"/expedientes/{instance.pk}/")
+                NotificacionService.crear(usuario=admin, mensaje=mensaje, tipo_alerta='auditoria', url_destino=f"/expediente/{instance.pk}/")
 
 
 @receiver(post_save, sender=Actuacion)
