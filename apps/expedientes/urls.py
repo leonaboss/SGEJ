@@ -50,6 +50,7 @@ urlpatterns = [
     path('sustanciacion-notificaciones/crear/', views.SustanciacionNotificacionCreateView.as_view(), name='sustanciacionnotificacion_create'),
     path('sustanciacion-notificaciones/editar/<int:pk>/', views.SustanciacionNotificacionUpdateView.as_view(), name='sustanciacionnotificacion_update'),
     path('sustanciacion-notificaciones/eliminar/<int:pk>/', views.SustanciacionNotificacionDeleteView.as_view(), name='sustanciacionnotificacion_delete'),
+    path('verificaciones/', views.VerificacionListView.as_view(), name='verificacion_list'),
 
     path('cargos/', views.CargoListView.as_view(), name='cargo_list'),
     path('cargos/crear/', views.CargoCreateView.as_view(), name='cargo_create'),

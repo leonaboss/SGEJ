@@ -975,6 +975,25 @@ class SustanciacionNotificacionDeleteView(LoginRequiredMixin, View):
         return redirect('expedientes:sustanciacionnotificacion_list')
 
 
+class VerificacionListView(LoginRequiredMixin, ListView):
+    template_name = 'expedientes/verificaciones_list.html'
+    context_object_name = 'verificaciones'
+    paginate_by = 25
+
+    def get_queryset(self):
+        queryset = SustanciacionNotificacion.objects.filter(deleted_at__isnull=True).select_related('expediente', 'personal')
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            queryset = queryset.filter(
+                models.Q(expediente__numero_expediente__icontains=q) |
+                models.Q(personal__nombres__icontains=q) |
+                models.Q(personal__apellidos__icontains=q) |
+                models.Q(firma_digital_hash__icontains=q) |
+                models.Q(huella_digital_hash__icontains=q)
+            )
+        return queryset
+
+
 # ─── PersonaCargo CRUD ───────────────────────────────────────────────────────
 
 class PersonaCargoListView(CatalogRequiredMixin, ListView):

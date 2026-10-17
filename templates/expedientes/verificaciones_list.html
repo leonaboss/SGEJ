@@ -1,0 +1,93 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}Verificaciones de Seguridad — SGEJ{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small bg-transparent mb-0">
+            <li class="breadcrumb-item"><a href="{% url 'expedientes:dashboard' %}" class="text-decoration-none">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'expedientes:sustanciacionnotificacion_list' %}" class="text-decoration-none">Procedimientos Disciplinarios</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Verificaciones de Seguridad</li>
+        </ol>
+    </nav>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2 py-3 px-3">
+            <div>
+                <h3 class="h5 fw-bold mb-0"><i class="bi bi-shield-check text-success me-2"></i>Módulo de Verificaciones (Firmas y Huellas)</h3>
+                <small class="text-muted">Control criptográfico de integridad, firmas digitales SHA-256 y huellas biométricas asociadas a procedimientos disciplinarios.</small>
+            </div>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+                    <input type="text" id="search-input" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm" placeholder="Buscar expediente, cédula o hash..." style="width:240px;">
+                    <button class="btn btn-dark btn-sm" type="submit"><i class="bi bi-search me-1"></i>Buscar</button>
+                    {% if request.GET.q %}
+                    <a href="{% url 'expedientes:verificacion_list' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small" id="table-data">
+                <thead class="table-light">
+                    <tr>
+                        <th>N° Expediente</th>
+                        <th>Involucrado</th>
+                        <th>Cédula</th>
+                        <th>Fecha</th>
+                        <th>Firma Digital (SHA-256)</th>
+                        <th>Huella Biométrica (Hash)</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in verificaciones %}
+                    <tr>
+                        <td>
+                            <span class="fw-semibold text-primary">
+                                <a href="{% url 'expedientes:expediente_detail' v.expediente.pk %}" class="text-decoration-none">{{ v.expediente.numero_expediente }}</a>
+                            </span>
+                        </td>
+                        <td>{{ v.personal.get_full_name|default:"-" }}</td>
+                        <td>{{ v.personal.cedula|default:"-" }}</td>
+                        <td>{{ v.fecha|date:"d/m/Y H:i"|default:"-" }}</td>
+                        <td>
+                            {% if v.firma_digital_hash %}
+                            <span class="font-monospace small text-dark bg-light px-2 py-1 rounded" title="{{ v.firma_digital_hash }}">
+                                <i class="bi bi-key-fill text-warning me-1"></i>{{ v.firma_digital_hash|truncatechars:24 }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">Sin firma</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if v.huella_digital_hash %}
+                            <span class="font-monospace small text-dark bg-light px-2 py-1 rounded" title="{{ v.huella_digital_hash }}">
+                                <i class="bi bi-fingerprint text-success me-1"></i>{{ v.huella_digital_hash|truncatechars:16 }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">Sin huella</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'expedientes:expediente_detail' v.expediente.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Expediente"><i class="bi bi-eye"></i></a>
+                                <a href="{% url 'expedientes:sustanciacionnotificacion_update' v.pk %}" class="btn btn-sm btn-outline-primary" title="Editar Notificación"><i class="bi bi-pencil"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="bi bi-shield-exclamation fs-1 text-secondary mb-2 d-block"></i>
+                                No se encontraron registros de verificaciones criptográficas.
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -38,6 +38,12 @@
                     {% sidebar_item url="expedientes:modulo_list" tipo_modulo="CONT" icon="bi bi-journal-text" label="Convenios UPTAG" active_module="modulo/CONT" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
                     {% sidebar_item url="expedientes:modulo_list" tipo_modulo="LITI" icon="bi bi-bank" label="Litigios" active_module="modulo/LITI" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
                     {% sidebar_item url="expedientes:modulo_list" tipo_modulo="SUST" icon="bi bi-shield-exclamation" label="Sustanciación" active_module="modulo/SUST" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
+                    <li class="sidebar-nav-item">
+                        <a href="{% url 'expedientes:verificacion_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'verificacion_list' %}active{% endif %}">
+                            <i class="bi bi-shield-check me-2 text-success"></i>
+                            <span>Verificaciones</span>
+                        </a>
+                    </li>
                     {% sidebar_item url="expedientes:modulo_list" tipo_modulo="IND" icon="bi bi-list-check" label="Índices Inspectoría" active_module="modulo/IND" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
                     {% sidebar_item url="expedientes:calendario_lapsos" icon="bi bi-calendar-range" label="Lapsos y Agenda Procesal" active_module="calendario" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
                 </ul>

@@ -37,8 +37,6 @@
                         <th>Fecha</th>
                         <th>Hora</th>
                         <th>Lugar</th>
-                        <th>Firma (SHA-256)</th>
-                        <th>Huella</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -52,26 +50,12 @@
                         <td>{{ n.hora|time:"H:i" }}</td>
                         <td>{{ n.lugar|default:"-" }}</td>
                         <td>
-                            {% if n.firma_digital_hash %}
-                                <span class="font-monospace small" title="{{ n.firma_digital_hash }}">{{ n.firma_digital_hash|truncatechars:20 }}</span>
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if n.huella_digital_hash %}
-                                <span class="font-monospace small">{{ n.huella_digital_hash|truncatechars:12 }}</span>
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
-                        </td>
-                        <td>
                             <a href="{% url 'expedientes:sustanciacionnotificacion_update' n.pk %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
                             <form method="post" action="{% url 'expedientes:sustanciacionnotificacion_delete' n.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar esta notificación?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button></form>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="9" class="text-center text-muted py-4">No hay notificaciones registradas.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">No hay notificaciones registradas.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
