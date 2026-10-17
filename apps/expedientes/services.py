@@ -127,12 +127,18 @@ class NotificacionService:
         """Crea una notificación para un usuario."""
         if not usuario or not usuario.pk:
             return None
-        return Notificacion.objects.create(
-            usuario=usuario,
-            mensaje=mensaje,
-            tipo_alerta=tipo_alerta,
-            url_destino=url_destino,
-        )
+        try:
+            return Notificacion.objects.create(
+                usuario=usuario,
+                mensaje=mensaje,
+                tipo_alerta=tipo_alerta,
+                url_destino=url_destino,
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error creando notificación: {e}")
+            return None
 
 
 class ExportacionService:

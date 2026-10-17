@@ -113,9 +113,9 @@ class BaseExpedienteForm(forms.ModelForm):
         required=False
     )
     motivo = forms.CharField(
-        max_length=255,
+        max_length=500,
         label='Motivo',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Escriba el motivo aquí'}),
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Escriba el motivo y los detalles aquí'}),
         required=False
     )
     class Meta:
