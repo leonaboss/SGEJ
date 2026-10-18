@@ -96,16 +96,34 @@
         });
     </script>
     {% endblock %}
-    {% if is_paginated %}
+    {% if is_paginated or page_obj.paginator.num_pages > 1 %}
     <div class="card-footer bg-white border-top d-flex justify-content-center py-3">
         <nav>
             <ul class="pagination pagination-sm mb-0">
                 {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&estatus={{ estatus_filter }}"><i class="bi bi-chevron-left"></i> Anterior</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i> Anterior
+                    </a>
+                </li>
                 {% endif %}
-                <li class="page-item active"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
                 {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&estatus={{ estatus_filter }}">Siguiente <i class="bi bi-chevron-right"></i></a></li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}{% endif %}">
+                        Siguiente <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
                 {% endif %}
             </ul>
         </nav>

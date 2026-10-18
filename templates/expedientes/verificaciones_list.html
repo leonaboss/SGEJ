@@ -11,20 +11,43 @@
     </nav>
 
     <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2 py-3 px-3">
-            <div>
-                <h3 class="h5 fw-bold mb-0"><i class="bi bi-shield-check text-success me-2"></i>Módulo de Verificaciones (Firmas y Huellas)</h3>
-                <small class="text-muted">Control forense e integridad criptográfica de procedimientos disciplinarios (Sustanciación).</small>
+        <div class="card-header bg-white border-bottom py-3 px-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <div>
+                    <h3 class="h5 fw-bold mb-0"><i class="bi bi-shield-check text-success me-2"></i>Módulo de Verificaciones (Firmas y Huellas)</h3>
+                    <small class="text-muted">Control forense e integridad criptográfica de procedimientos disciplinarios (Sustanciación).</small>
+                </div>
             </div>
-            <div class="d-flex gap-2 align-items-center flex-wrap">
-                <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
-                    <input type="text" id="search-input" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm" placeholder="Buscar expediente, cédula o nombre..." style="width:240px;">
-                    <button class="btn btn-dark btn-sm" type="submit"><i class="bi bi-search me-1"></i>Buscar</button>
-                    {% if request.GET.q %}
-                    <a href="{% url 'expedientes:verificacion_list' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+            <!-- Barra de Filtros Profesional -->
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="small text-muted mb-1">Buscar expediente, cédula o nombre</label>
+                    <input type="text" id="search-input" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm" placeholder="N° Expediente, nombre, cédula...">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="small text-muted mb-1">Estado de Firma</label>
+                    <select name="verificado" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="1" {% if verificado_filter == '1' %}selected{% endif %}>Verificados (Con Firma)</option>
+                        <option value="0" {% if verificado_filter == '0' %}selected{% endif %}>No Verificados</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="small text-muted mb-1">Estatus</label>
+                    <select name="estatus" class="form-select form-select-sm">
+                        <option value="">Todos los estatus</option>
+                        {% for val, label in estatus_choices %}
+                        <option value="{{ val }}" {% if estatus_filter == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-2 d-flex gap-1">
+                    <button class="btn btn-dark btn-sm w-100" type="submit"><i class="bi bi-search me-1"></i>Filtrar</button>
+                    {% if request.GET.q or request.GET.verificado or request.GET.estatus %}
+                    <a href="{% url 'expedientes:verificacion_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros"><i class="bi bi-x-lg"></i></a>
                     {% endif %}
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 small" id="table-data">
@@ -63,7 +86,7 @@
                         </td>
                         <td class="text-center">
                             {% if v.huella_verificada %}
-                            <span class="badge bg-success bg-opacity-15 text-success px-2 py-1" title="Huella biométrica registrada y verificada">
+                            <span class="badge bg-success bg-opacity-15 text-success px-2 py-1" title="Huella biométrica verificada">
                                 <i class="bi bi-check-circle-fill me-1"></i>✅ Verificado
                             </span>
                             {% else %}
@@ -92,6 +115,40 @@
                 </tbody>
             </table>
         </div>
+        
+        {% if is_paginated or page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer bg-white border-top d-flex justify-content-center py-3">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
+                            <i class="bi bi-chevron-left"></i> Anterior
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
+                            Siguiente <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

@@ -166,6 +166,10 @@ class ExpedienteModuloListView(LoginRequiredMixin, ListView):
         context['notificaciones_count'] = Notificacion.objects.filter(
             usuario=self.request.user, leido=False, deleted_at__isnull=True
         ).count()
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        context['filtros_qs'] = query_params.urlencode()
         return context
 
 
@@ -990,7 +994,28 @@ class VerificacionListView(AdminRequiredMixin, ListView):
                 models.Q(personal__apellidos__icontains=q) |
                 models.Q(cedula__icontains=q)
             )
+        verificado = self.request.GET.get('verificado', '').strip()
+        if verificado == '1':
+            queryset = queryset.filter(firma_digital_hash__isnull=False).exclude(firma_digital_hash='')
+        elif verificado == '0':
+            queryset = queryset.filter(models.Q(firma_digital_hash__isnull=True) | models.Q(firma_digital_hash=''))
+            
+        estatus = self.request.GET.get('estatus', '').strip()
+        if estatus:
+            queryset = queryset.filter(estatus=estatus)
         return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('q', '')
+        context['verificado_filter'] = self.request.GET.get('verificado', '')
+        context['estatus_filter'] = self.request.GET.get('estatus', '')
+        context['estatus_choices'] = Expediente.EstatusChoices.choices
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        context['filtros_qs'] = query_params.urlencode()
+        return context
 
 
 # ─── PersonaCargo CRUD ───────────────────────────────────────────────────────

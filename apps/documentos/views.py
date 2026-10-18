@@ -39,6 +39,10 @@ class DocumentoListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['search_query'] = self.request.GET.get('q', '')
         context['tipo_filter'] = self.request.GET.get('tipo', '')
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        context['filtros_qs'] = query_params.urlencode()
         return context
 
 class DocumentoUploadView(LoginRequiredMixin, View):
