@@ -12,22 +12,46 @@
 
 {% block before_table %}{% endblock %}
 
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2 py-3 px-3">
-        <h3 class="h5 fw-bold mb-0">{% block module_title %}Expedientes{% endblock %}</h3>
-        <div class="d-flex gap-2 align-items-center flex-wrap">
-            <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
-                <input type="text" id="search-input" name="q" value="{{ search_query }}" class="form-control form-control-sm" placeholder="{% block search_placeholder %}Buscar...{% endblock %}" style="width:180px;">
-                {% if mostrar_filtro_estatus %}
-                <select name="estatus" class="form-select form-select-sm" style="width:auto;">
+<!-- Barra de Filtros y Búsqueda Estilo Bitácora -->
+<div class="card shadow-sm border-0 mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="small text-muted mb-1">Buscar expediente o involucrado</label>
+                <input type="text" id="search-input" name="q" class="form-control form-control-sm" placeholder="{% block search_placeholder %}N° Expediente, nombre, cédula...{% endblock %}" value="{{ search_query }}">
+            </div>
+            {% if mostrar_filtro_estatus %}
+            <div class="col-6 col-md-3">
+                <label class="small text-muted mb-1">Estatus</label>
+                <select name="estatus" class="form-select form-select-sm">
                     <option value="">Todos los estatus</option>
                     {% for val, label in estatus_choices %}
                     <option value="{{ val }}" {% if estatus_filter == val %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
+            </div>
+            {% endif %}
+            <div class="col-6 col-md-3">
+                <label class="small text-muted mb-1">Ordenar por Fecha</label>
+                <select name="orden" class="form-select form-select-sm">
+                    <option value="recientes" {% if orden_filter == 'recientes' or not orden_filter %}selected{% endif %}>Más recientes (Actuales)</option>
+                    <option value="antiguos" {% if orden_filter == 'antiguos' %}selected{% endif %}>Más antiguos (Viejos)</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-dark btn-sm w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+                {% if search_query or estatus_filter or orden_filter and orden_filter != 'recientes' %}
+                <a href="{% url 'expedientes:modulo_list' tipo_modulo %}" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros"><i class="bi bi-x-lg"></i></a>
                 {% endif %}
-                <button class="btn btn-dark btn-sm" type="submit"><i class="bi bi-funnel me-1"></i>Filtrar</button>
-            </form>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2 py-3 px-3">
+        <h3 class="h5 fw-bold mb-0">{% block module_title %}Expedientes{% endblock %}</h3>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
             <a href="{% url 'expedientes:expediente_create' %}?tipo_modulo={{ tipo_modulo }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo</a>
             {% block excel_button %}
             <div class="dropdown d-inline-block">
@@ -52,57 +76,26 @@
         </div>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 small" id="table-data">
-            <thead class="table-light">
-                <tr>
-                    {% block table_headers %}{% endblock %}
-                    <th class="text-center" style="width: 70px;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for exp in expedientes %}
-                <tr>
-                    {% block table_cells %}{% endblock %}
-                    <td class="text-center">
-                        <div class="btn-group" role="group">
-                            <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
-                            <a href="{% url 'expedientes:expediente_update' exp.pk %}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
-                            {% if not exp.is_archivado %}
-                            <form method="post" action="{% url 'expedientes:expediente_archivar' exp.pk %}" onsubmit="return confirm('¿Está seguro de archivar este expediente?');" class="d-inline">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Archivar"><i class="bi bi-archive"></i></button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="100">
-                        <div class="text-center py-5 sgej-empty-state">
-                            <i class="bi bi-inbox fs-1 text-muted"></i>
-                            <p class="text-muted mt-2">{% block empty_message %}No se encontraron registros.{% endblock %}</p>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
+        <table class="table table-hover align-middle mb-0" id="table-data">
+            {% block table_content %}
+            {% endblock %}
         </table>
     </div>
     {% block extra_js %}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            initializeTableSearch('search-input', 'table-data');
+            // table loaded
         });
     </script>
     {% endblock %}
+    
     {% if is_paginated or page_obj.paginator.num_pages > 1 %}
     <div class="card-footer bg-white border-top d-flex justify-content-center py-3">
         <nav>
             <ul class="pagination pagination-sm mb-0">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}{% endif %}">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}&orden={{ orden_filter }}{% endif %}">
                         <i class="bi bi-chevron-left"></i> Anterior
                     </a>
                 </li>
@@ -113,14 +106,14 @@
                     <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                     {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ num }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}{% endif %}">{{ num }}</a>
+                        <a class="page-link" href="?page={{ num }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}&orden={{ orden_filter }}{% endif %}">{{ num }}</a>
                     </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}{% endif %}">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% else %}&q={{ search_query }}&estatus={{ estatus_filter }}&orden={{ orden_filter }}{% endif %}">
                         Siguiente <i class="bi bi-chevron-right"></i>
                     </a>
                 </li>
