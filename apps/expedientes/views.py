@@ -986,7 +986,8 @@ class VerificacionListView(AdminRequiredMixin, ListView):
         if q:
             queryset = queryset.filter(
                 models.Q(numero_expediente__icontains=q) |
-                models.Q(nombre_completo__icontains=q) |
+                models.Q(personal__nombres__icontains=q) |
+                models.Q(personal__apellidos__icontains=q) |
                 models.Q(cedula__icontains=q)
             )
         return queryset
