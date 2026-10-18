@@ -47,7 +47,7 @@
                                 <a href="{% url 'expedientes:expediente_detail' v.pk %}" class="text-decoration-none">{{ v.numero_expediente }}</a>
                             </span>
                         </td>
-                        <td>{{ v.nombre_completo|default:"-" }}</td>
+                        <td>{{ v.personal.get_full_name|default:v.nombre_completo|default:"-" }}</td>
                         <td>{{ v.cedula|default:"-" }}</td>
                         <td>{{ v.fecha_registro|date:"d/m/Y"|default:"-" }}</td>
                         <td class="text-center">

@@ -38,15 +38,14 @@
                     {% sidebar_item url="expedientes:modulo_list" tipo_modulo="CONT" icon="bi bi-journal-text" label="Convenios UPTAG" active_module="modulo/CONT" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
                     {% sidebar_item url="expedientes:modulo_list" tipo_modulo="LITI" icon="bi bi-bank" label="Litigios" active_module="modulo/LITI" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
                     <li class="sidebar-nav-item">
-                        <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'modulo_list,sustanciacionnotificacion_list,verificacion_list' or tipo_modulo != 'SUST' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseSustanciacion" role="button" aria-expanded="{% if request.resolver_match.url_name in 'modulo_list,sustanciacionnotificacion_list,verificacion_list' and tipo_modulo == 'SUST' or request.resolver_match.url_name in 'sustanciacionnotificacion_list,verificacion_list' %}true{% else %}false{% endif %}" aria-controls="collapseSustanciacion">
+                        <a class="sidebar-nav-link {% if request.resolver_match.url_name not in 'modulo_list,verificacion_list' or tipo_modulo != 'SUST' %}collapsed{% endif %}" data-bs-toggle="collapse" href="#collapseSustanciacion" role="button" aria-expanded="{% if request.resolver_match.url_name in 'modulo_list,verificacion_list' and tipo_modulo == 'SUST' or request.resolver_match.url_name == 'verificacion_list' %}true{% else %}false{% endif %}" aria-controls="collapseSustanciacion">
                             <i class="bi bi-shield-exclamation me-2"></i>
                             <span>Sustanciación</span>
                             <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem;"></i>
                         </a>
-                        <div class="collapse {% if request.resolver_match.url_name in 'modulo_list,sustanciacionnotificacion_list,verificacion_list' and tipo_modulo == 'SUST' or request.resolver_match.url_name in 'sustanciacionnotificacion_list,verificacion_list' %}show{% endif %}" id="collapseSustanciacion">
+                        <div class="collapse {% if request.resolver_match.url_name in 'modulo_list,verificacion_list' and tipo_modulo == 'SUST' or request.resolver_match.url_name == 'verificacion_list' %}show{% endif %}" id="collapseSustanciacion">
                             <ul class="list-unstyled pb-1 ps-3 mb-0">
                                 {% sidebar_item url="expedientes:modulo_list" tipo_modulo="SUST" icon="bi bi-list-task" label="Procedimientos" active_module="modulo/SUST" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
-                                {% sidebar_item url="expedientes:sustanciacionnotificacion_list" icon="bi bi-bell" label="Notificaciones" active_module="sustanciacionnotificacion_list" required_roles="ADMIN,ABOG,USR_PUBLICO" %}
                                 {% if request.user|has_role:'ADMIN' %}
                                 <li class="sidebar-nav-item">
                                     <a href="{% url 'expedientes:verificacion_list' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'verificacion_list' %}active{% endif %}">
