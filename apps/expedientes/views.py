@@ -975,7 +975,7 @@ class SustanciacionNotificacionDeleteView(LoginRequiredMixin, View):
         return redirect('expedientes:sustanciacionnotificacion_list')
 
 
-class VerificacionListView(LoginRequiredMixin, ListView):
+class VerificacionListView(AdminRequiredMixin, ListView):
     template_name = 'expedientes/verificaciones_list.html'
     context_object_name = 'verificaciones'
     paginate_by = 25

@@ -337,9 +337,9 @@ class LitigioExpedienteForm(BaseExpedienteForm, TribunalValidationMixin):
         return instance
 
 class SustanciacionExpedienteForm(BaseExpedienteForm, PersonalValidationMixin, MotivoValidationMixin, CargoValidationMixin):
-    fields_order = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'fecha_registro', 'hora_procedimiento', 'lugar_procedimiento', 'firma_digital_hash', 'huella_digital_hash', 'fase_actual', 'cronometro_limite', 'estatus']
+    fields_order = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'fecha_registro', 'hora_procedimiento', 'lugar_procedimiento', 'fase_actual', 'cronometro_limite', 'estatus']
     class Meta(BaseExpedienteForm.Meta):
-        fields = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'fecha_registro', 'hora_procedimiento', 'lugar_procedimiento', 'firma_digital_hash', 'huella_digital_hash', 'fase_actual', 'cronometro_limite', 'estatus']
+        fields = ['numero_expediente', 'nombre_completo', 'cedula', 'cargo', 'motivo', 'fecha_registro', 'hora_procedimiento', 'lugar_procedimiento', 'fase_actual', 'cronometro_limite', 'estatus']
         exclude = []
         labels = {
             **BaseExpedienteForm.Meta.labels,
@@ -348,16 +348,6 @@ class SustanciacionExpedienteForm(BaseExpedienteForm, PersonalValidationMixin, M
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Aseguramos que los campos de hash estén presentes si no estaban
-        if 'firma_digital_hash' not in self.fields:
-            self.fields['firma_digital_hash'] = forms.CharField(required=False)
-        if 'huella_digital_hash' not in self.fields:
-            self.fields['huella_digital_hash'] = forms.CharField(required=False)
-            
-        self.fields['firma_digital_hash'].widget.attrs.update({'class': 'form-control font-monospace', 'readonly': True})
-        self.fields['huella_digital_hash'].widget.attrs.update({'class': 'form-control font-monospace', 'readonly': True})
-        self.fields['firma_digital_hash'].label = 'Firma (SHA-256)'
-        self.fields['huella_digital_hash'].label = 'Huella'
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -535,7 +525,7 @@ class PersonaCargoForm(forms.ModelForm):
 class SustanciacionNotificacionForm(forms.ModelForm):
     class Meta:
         model = SustanciacionNotificacion
-        exclude = ['deleted_at']
+        exclude = ['deleted_at', 'firma_digital_hash', 'huella_digital_hash']
         widgets = {
             'fecha': forms.DateInput(attrs={'type': 'date'}),
             'hora': forms.TimeInput(attrs={'type': 'time'}),
@@ -551,14 +541,6 @@ class SustanciacionNotificacionForm(forms.ModelForm):
         )
         if self.instance and self.instance.pk and self.instance.personal:
             self.initial['personal'] = self.instance.personal.get_full_name()
-        
-        firma = self.fields['firma_digital_hash']
-        firma.widget = forms.TextInput(attrs={'class': 'form-control font-monospace', 'placeholder': 'Se genera automáticamente al guardar', 'readonly': True})
-        firma.required = False
-        
-        huella = self.fields['huella_digital_hash']
-        huella.widget = forms.TextInput(attrs={'class': 'form-control font-monospace', 'placeholder': 'Se genera automáticamente al guardar', 'readonly': True})
-        huella.required = False
 
     def clean_personal(self):
         value = self.cleaned_data.get('personal', '')
