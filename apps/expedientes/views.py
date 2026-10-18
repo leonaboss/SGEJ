@@ -981,15 +981,13 @@ class VerificacionListView(AdminRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        queryset = SustanciacionNotificacion.objects.filter(deleted_at__isnull=True).select_related('expediente', 'personal')
+        queryset = Expediente.objects.filter(tipo_modulo='SUST', deleted_at__isnull=True).select_related('cargo', 'motivo', 'personal')
         q = self.request.GET.get('q', '').strip()
         if q:
             queryset = queryset.filter(
-                models.Q(expediente__numero_expediente__icontains=q) |
-                models.Q(personal__nombres__icontains=q) |
-                models.Q(personal__apellidos__icontains=q) |
-                models.Q(firma_digital_hash__icontains=q) |
-                models.Q(huella_digital_hash__icontains=q)
+                models.Q(numero_expediente__icontains=q) |
+                models.Q(nombre_completo__icontains=q) |
+                models.Q(cedula__icontains=q)
             )
         return queryset
 

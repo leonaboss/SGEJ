@@ -306,6 +306,14 @@ class Expediente(models.Model):
     def __str__(self):
         return f"EXP-{self.numero_expediente} ({self.get_tipo_modulo_display()})"
 
+    @property
+    def firma_verificada(self):
+        return bool(self.firma_digital_hash)
+
+    @property
+    def huella_verificada(self):
+        return bool(self.huella_digital_hash)
+
 
 class Actuacion(models.Model):
     """Actuaciones del usuario (generales o vinculadas a un expediente/documento)."""
