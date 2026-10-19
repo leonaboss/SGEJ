@@ -76,15 +76,47 @@
         </div>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" id="table-data">
-            {% block table_content %}
-            {% endblock %}
+        <table class="table table-hover align-middle mb-0 small" id="table-data">
+            <thead class="table-light">
+                <tr>
+                    {% block table_headers %}{% endblock %}
+                    <th class="text-center" style="width: 70px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exp in expedientes %}
+                <tr>
+                    {% block table_cells %}{% endblock %}
+                    <td class="text-center">
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'expedientes:expediente_detail' exp.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver Detalle"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'expedientes:expediente_update' exp.pk %}" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
+                            {% if not exp.is_archivado %}
+                            <form method="post" action="{% url 'expedientes:expediente_archivar' exp.pk %}" onsubmit="return confirm('¿Está seguro de archivar este expediente?');" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Archivar"><i class="bi bi-archive"></i></button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="100">
+                        <div class="text-center py-5 sgej-empty-state">
+                            <i class="bi bi-inbox fs-1 text-muted"></i>
+                            <p class="text-muted mt-2">{% block empty_message %}No se encontraron registros.{% endblock %}</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
     {% block extra_js %}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // table loaded
+            initializeTableSearch('search-input', 'table-data');
         });
     </script>
     {% endblock %}
