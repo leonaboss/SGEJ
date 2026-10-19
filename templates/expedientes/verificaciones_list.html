@@ -10,31 +10,31 @@
         </ol>
     </nav>
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-bottom py-3 px-3">
+    <!-- Barra Superior de Filtros Estandarizada -->
+    <div class="card shadow-sm border-0 mb-3 rounded-3">
+        <div class="card-body py-3">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                 <div>
                     <h3 class="h5 fw-bold mb-0"><i class="bi bi-shield-check text-success me-2"></i>Módulo de Verificaciones (Firmas y Huellas)</h3>
                     <small class="text-muted">Control forense e integridad criptográfica de procedimientos disciplinarios (Sustanciación).</small>
                 </div>
             </div>
-            <!-- Barra de Filtros Profesional -->
             <form method="get" class="row g-2 align-items-end">
                 <div class="col-12 col-md-4">
-                    <label class="small text-muted mb-1">Buscar expediente, cédula o nombre</label>
-                    <input type="text" id="search-input" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm" placeholder="N° Expediente, nombre, cédula...">
+                    <label class="small text-muted mb-1 fw-semibold">Buscar expediente, cédula o nombre</label>
+                    <input type="text" id="search-input" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm rounded-2" placeholder="N° Expediente, nombre, cédula...">
                 </div>
                 <div class="col-6 col-md-3">
-                    <label class="small text-muted mb-1">Estado de Firma</label>
-                    <select name="verificado" class="form-select form-select-sm">
+                    <label class="small text-muted mb-1 fw-semibold">Estado de Firma</label>
+                    <select name="verificado" class="form-select form-select-sm rounded-2">
                         <option value="">Todos</option>
                         <option value="1" {% if verificado_filter == '1' %}selected{% endif %}>Verificados (Con Firma)</option>
                         <option value="0" {% if verificado_filter == '0' %}selected{% endif %}>No Verificados</option>
                     </select>
                 </div>
                 <div class="col-6 col-md-3">
-                    <label class="small text-muted mb-1">Estatus</label>
-                    <select name="estatus" class="form-select form-select-sm">
+                    <label class="small text-muted mb-1 fw-semibold">Estatus</label>
+                    <select name="estatus" class="form-select form-select-sm rounded-2">
                         <option value="">Todos los estatus</option>
                         {% for val, label in estatus_choices %}
                         <option value="{{ val }}" {% if estatus_filter == val %}selected{% endif %}>{{ label }}</option>
@@ -42,13 +42,16 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-2 d-flex gap-1">
-                    <button class="btn btn-dark btn-sm w-100" type="submit"><i class="bi bi-search me-1"></i>Filtrar</button>
+                    <button class="btn btn-dark btn-sm w-100 rounded-2" type="submit"><i class="bi bi-filter me-1"></i>Filtrar</button>
                     {% if request.GET.q or request.GET.verificado or request.GET.estatus %}
-                    <a href="{% url 'expedientes:verificacion_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros"><i class="bi bi-x-lg"></i></a>
+                    <a href="{% url 'expedientes:verificacion_list' %}" class="btn btn-outline-secondary btn-sm rounded-2" title="Limpiar filtros"><i class="bi bi-x-lg"></i></a>
                     {% endif %}
                 </div>
             </form>
         </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 small" id="table-data">
                 <thead class="table-light">
@@ -117,31 +120,34 @@
         </div>
         
         {% if is_paginated or page_obj.paginator.num_pages > 1 %}
-        <div class="card-footer bg-white border-top d-flex justify-content-center py-3">
+        <div class="card-footer bg-white border-top d-flex justify-content-between align-items-center py-3 px-3 flex-wrap gap-2">
+            <div class="px-3 py-1 bg-light rounded text-muted small border">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </div>
             <nav>
                 <ul class="pagination pagination-sm mb-0">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
-                            <i class="bi bi-chevron-left"></i> Anterior
+                        <a class="page-link text-primary" href="?page={{ page_obj.previous_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
+                            Anterior
                         </a>
                     </li>
                     {% endif %}
 
                     {% for num in page_obj.paginator.page_range %}
                         {% if page_obj.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        <li class="page-item active"><span class="page-link bg-primary border-primary text-white">{{ num }}</span></li>
                         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">{{ num }}</a>
+                            <a class="page-link text-primary" href="?page={{ num }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">{{ num }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
-                            Siguiente <i class="bi bi-chevron-right"></i>
+                        <a class="page-link text-primary fw-semibold" href="?page={{ page_obj.next_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
+                            Siguiente
                         </a>
                     </li>
                     {% endif %}

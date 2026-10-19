@@ -8,109 +8,119 @@
             <a href="{% url 'documentos:documento_upload' %}" class="btn btn-success"><i class="bi bi-upload me-2"></i>Subir Documento</a>
         </div>
     </div>
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-            <form method="get" class="row g-2 mb-3 align-items-end">
+
+    <!-- Barra Superior de Filtros Estandarizada -->
+    <div class="card shadow-sm border-0 mb-3 rounded-3">
+        <div class="card-body py-3">
+            <form method="get" class="row g-2 align-items-end">
                 <div class="col-12 col-md-7">
-                    <label class="small text-muted mb-1">Búsqueda</label>
-                    <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar por nombre de archivo..." value="{{ search_query }}">
+                    <label class="small text-muted mb-1 fw-semibold">Búsqueda</label>
+                    <input type="text" name="q" class="form-control form-control-sm rounded-2" placeholder="Buscar por nombre de archivo..." value="{{ search_query }}">
                 </div>
                 <div class="col-6 col-md-3">
-                    <label class="small text-muted mb-1">Tipo</label>
-                    <select name="tipo" class="form-select form-select-sm">
+                    <label class="small text-muted mb-1 fw-semibold">Tipo</label>
+                    <select name="tipo" class="form-select form-select-sm rounded-2">
                         <option value="">Todos</option>
                         <option value="documentos" {% if tipo_filter == 'documentos' %}selected{% endif %}>Documentos</option>
                         <option value="plantillas" {% if tipo_filter == 'plantillas' %}selected{% endif %}>Plantillas</option>
                     </select>
                 </div>
                 <div class="col-6 col-md-2 d-flex gap-1">
-                    <button type="submit" class="btn btn-dark btn-sm w-100"><i class="bi bi-search me-1"></i>Filtrar</button>
+                    <button type="submit" class="btn btn-dark btn-sm w-100 rounded-2"><i class="bi bi-filter me-1"></i>Filtrar</button>
                     {% if search_query or tipo_filter %}
-                    <a href="{% url 'documentos:documento_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-lg"></i></a>
+                    <a href="{% url 'documentos:documento_list' %}" class="btn btn-outline-secondary btn-sm rounded-2" title="Limpiar"><i class="bi bi-x-lg"></i></a>
                     {% endif %}
                 </div>
             </form>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle small">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Nombre Original</th>
-                            <th>Tipo</th>
-                            <th>Expediente</th>
-                            <th>Versión</th>
-                            <th>Plantilla</th>
-                            <th>Subido por</th>
-                            <th>Fecha</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for doc in documentos %}
-                        <tr>
-                            <td>{{ doc.nombre_original }}</td>
-                            <td><span class="badge bg-secondary">{{ doc.tipo_mime }}</span></td>
-                            <td>{{ doc.expediente.numero_expediente|default:"-" }}</td>
-                            <td>{{ doc.version }}</td>
-                            <td>{% if doc.es_plantilla %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
-                            <td>{{ doc.created_by.get_full_name }}</td>
-                            <td>{{ doc.created_at|date:"d/m/Y H:i" }}</td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <a href="{% url 'documentos:documento_download' doc.pk %}" class="btn btn-sm btn-outline-success" title="Descargar" target="_blank">
-                                        <i class="bi bi-download"></i>
-                                    </a>
-                                    <a href="{% url 'documentos:documento_detail' doc.pk %}" class="btn btn-sm btn-outline-info" title="Detalle">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{% url 'documentos:documento_update' doc.pk %}" class="btn btn-sm btn-outline-primary" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form method="post" action="{% url 'documentos:documento_delete' doc.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este documento?');">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="8" class="text-center text-muted py-4">No hay documentos registrados.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle small mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nombre Original</th>
+                        <th>Tipo</th>
+                        <th>Expediente</th>
+                        <th>Versión</th>
+                        <th>Plantilla</th>
+                        <th>Subido por</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in documentos %}
+                    <tr>
+                        <td>{{ doc.nombre_original }}</td>
+                        <td><span class="badge bg-secondary">{{ doc.tipo_mime }}</span></td>
+                        <td>{{ doc.expediente.numero_expediente|default:"-" }}</td>
+                        <td>{{ doc.version }}</td>
+                        <td>{% if doc.es_plantilla %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+                        <td>{{ doc.created_by.get_full_name }}</td>
+                        <td>{{ doc.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'documentos:documento_download' doc.pk %}" class="btn btn-sm btn-outline-success" title="Descargar" target="_blank">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <a href="{% url 'documentos:documento_detail' doc.pk %}" class="btn btn-sm btn-outline-info" title="Detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'documentos:documento_update' doc.pk %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="post" action="{% url 'documentos:documento_delete' doc.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este documento?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">No hay documentos registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if is_paginated or page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer bg-white border-top d-flex justify-content-between align-items-center py-3 px-3 flex-wrap gap-2">
+            <div class="px-3 py-1 bg-light rounded text-muted small border">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
             </div>
-            
-            {% if is_paginated or page_obj.paginator.num_pages > 1 %}
-            <nav class="mt-3">
-                <ul class="pagination pagination-sm justify-content-center mb-0">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
-                            <i class="bi bi-chevron-left"></i> Anterior
+                        <a class="page-link text-primary" href="?page={{ page_obj.previous_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
+                            Anterior
                         </a>
                     </li>
                     {% endif %}
 
                     {% for num in page_obj.paginator.page_range %}
                         {% if page_obj.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        <li class="page-item active"><span class="page-link bg-primary border-primary text-white">{{ num }}</span></li>
                         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">{{ num }}</a>
+                            <a class="page-link text-primary" href="?page={{ num }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">{{ num }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
-                            Siguiente <i class="bi bi-chevron-right"></i>
+                        <a class="page-link text-primary fw-semibold" href="?page={{ page_obj.next_page_number }}{% if filtros_qs %}&{{ filtros_qs }}{% endif %}">
+                            Siguiente
                         </a>
                     </li>
                     {% endif %}
                 </ul>
             </nav>
-            {% endif %}
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
