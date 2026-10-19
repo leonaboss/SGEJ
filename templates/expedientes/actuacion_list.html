@@ -45,7 +45,7 @@
             </table>
         </div>
     </div>
-    {% if page_obj.paginator.num_pages > 1 %}
+    {% if page_obj %}
     <nav class="mt-3">
         <ul class="pagination pagination-sm justify-content-center">
             {% if page_obj.has_previous %}
