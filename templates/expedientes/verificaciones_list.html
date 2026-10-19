@@ -41,9 +41,17 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="col-6 col-md-2">
+                    <label class="small text-muted mb-1 fw-semibold">Desde</label>
+                    <input type="date" name="fecha_desde" class="form-control form-control-sm rounded-2" value="{{ fecha_desde }}">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="small text-muted mb-1 fw-semibold">Hasta</label>
+                    <input type="date" name="fecha_hasta" class="form-control form-control-sm rounded-2" value="{{ fecha_hasta }}">
+                </div>
                 <div class="col-12 col-md-2 d-flex gap-1">
                     <button class="btn btn-dark btn-sm w-100 rounded-2" type="submit"><i class="bi bi-filter me-1"></i>Filtrar</button>
-                    {% if request.GET.q or request.GET.verificado or request.GET.estatus %}
+                    {% if request.GET.q or request.GET.verificado or request.GET.estatus or fecha_desde or fecha_hasta %}
                     <a href="{% url 'expedientes:verificacion_list' %}" class="btn btn-outline-secondary btn-sm rounded-2" title="Limpiar filtros"><i class="bi bi-x-lg"></i></a>
                     {% endif %}
                 </div>
@@ -119,7 +127,7 @@
             </table>
         </div>
         
-        {% if is_paginated or page_obj.paginator.num_pages > 1 %}
+        {% if page_obj %}
         <div class="card-footer bg-white border-top d-flex justify-content-between align-items-center py-3 px-3 flex-wrap gap-2">
             <div class="px-3 py-1 bg-light rounded text-muted small border">
                 Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}

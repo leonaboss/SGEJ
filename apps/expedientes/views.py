@@ -151,6 +151,12 @@ class ExpedienteModuloListView(LoginRequiredMixin, ListView):
         fase = self.request.GET.get('fase', '').strip()
         if fase:
             queryset = queryset.filter(fase_actual=fase)
+        fecha_desde = self.request.GET.get('fecha_desde', '').strip()
+        fecha_hasta = self.request.GET.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            queryset = queryset.filter(created_at__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(created_at__lte=f'{fecha_hasta} 23:59:59')
         orden = self.request.GET.get('orden', 'recientes').strip()
         if orden == 'antiguos':
             queryset = queryset.order_by('created_at')
@@ -167,6 +173,8 @@ class ExpedienteModuloListView(LoginRequiredMixin, ListView):
         context['estatus_filter'] = self.request.GET.get('estatus', '')
         context['fase_actual'] = self.request.GET.get('fase', '')
         context['orden_filter'] = self.request.GET.get('orden', 'recientes')
+        context['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        context['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
         context['estatus_choices'] = Expediente.EstatusChoices.choices
         context['mostrar_filtro_estatus'] = tipo in ('DESP', 'LITI', 'OFIC')
         context['notificaciones_count'] = Notificacion.objects.filter(
@@ -1009,6 +1017,12 @@ class VerificacionListView(AdminRequiredMixin, ListView):
         estatus = self.request.GET.get('estatus', '').strip()
         if estatus:
             queryset = queryset.filter(estatus=estatus)
+        fecha_desde = self.request.GET.get('fecha_desde', '').strip()
+        fecha_hasta = self.request.GET.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            queryset = queryset.filter(created_at__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(created_at__lte=f'{fecha_hasta} 23:59:59')
         return queryset
 
     def get_context_data(self, **kwargs):
@@ -1016,6 +1030,8 @@ class VerificacionListView(AdminRequiredMixin, ListView):
         context['search_query'] = self.request.GET.get('q', '')
         context['verificado_filter'] = self.request.GET.get('verificado', '')
         context['estatus_filter'] = self.request.GET.get('estatus', '')
+        context['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        context['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
         context['estatus_choices'] = Expediente.EstatusChoices.choices
         query_params = self.request.GET.copy()
         if 'page' in query_params:

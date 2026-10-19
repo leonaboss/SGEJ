@@ -33,12 +33,20 @@ class DocumentoListView(LoginRequiredMixin, ListView):
             qs = qs.filter(es_plantilla=True)
         elif tipo == 'documentos':
             qs = qs.filter(es_plantilla=False)
+        fecha_desde = self.request.GET.get('fecha_desde', '').strip()
+        fecha_hasta = self.request.GET.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            qs = qs.filter(created_at__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(created_at__lte=f'{fecha_hasta} 23:59:59')
         return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['search_query'] = self.request.GET.get('q', '')
         context['tipo_filter'] = self.request.GET.get('tipo', '')
+        context['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        context['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
         query_params = self.request.GET.copy()
         if 'page' in query_params:
             query_params.pop('page')
