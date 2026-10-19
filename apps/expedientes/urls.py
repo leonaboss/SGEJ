@@ -56,16 +56,22 @@ urlpatterns = [
     path('cargos/crear/', views.CargoCreateView.as_view(), name='cargo_create'),
     path('cargos/editar/<int:pk>/', views.CargoUpdateView.as_view(), name='cargo_update'),
     path('cargos/eliminar/<int:pk>/', views.CargoDeleteView.as_view(), name='cargo_delete'),
+    path('cargos/<int:pk>/archivar/', views.CargoArchivarView.as_view(), name='cargo_archivar'),
+    path('cargos/<int:pk>/desarchivar/', views.CargoDesarchivarView.as_view(), name='cargo_desarchivar'),
 
     path('motivos/', views.MotivoListView.as_view(), name='motivo_list'),
     path('motivos/crear/', views.MotivoCreateView.as_view(), name='motivo_create'),
     path('motivos/editar/<int:pk>/', views.MotivoUpdateView.as_view(), name='motivo_update'),
     path('motivos/eliminar/<int:pk>/', views.MotivoDeleteView.as_view(), name='motivo_delete'),
+    path('motivos/<int:pk>/archivar/', views.MotivoArchivarView.as_view(), name='motivo_archivar'),
+    path('motivos/<int:pk>/desarchivar/', views.MotivoDesarchivarView.as_view(), name='motivo_desarchivar'),
 
     path('tribunales/', views.TribunalListView.as_view(), name='tribunal_list'),
     path('tribunales/crear/', views.TribunalCreateView.as_view(), name='tribunal_create'),
     path('tribunales/editar/<int:pk>/', views.TribunalUpdateView.as_view(), name='tribunal_update'),
     path('tribunales/eliminar/<int:pk>/', views.TribunalDeleteView.as_view(), name='tribunal_delete'),
+    path('tribunales/<int:pk>/archivar/', views.TribunalArchivarView.as_view(), name='tribunal_archivar'),
+    path('tribunales/<int:pk>/desarchivar/', views.TribunalDesarchivarView.as_view(), name='tribunal_desarchivar'),
 
     path('notificaciones/', views.NotificacionListView.as_view(), name='notificacion_list'),
     path('notificaciones/marcar-todas-leidas/', views.NotificacionMarcarTodasLeidasView.as_view(), name='notificacion_marcar_todas_leidas'),
@@ -88,5 +94,7 @@ urlpatterns = [
     path('sujetos-procesales/crear/', views.SujetoProcesalCreateView.as_view(), name='sujetoprocesal_create'),
     path('sujetos-procesales/editar/<int:pk>/', views.SujetoProcesalUpdateView.as_view(), name='sujetoprocesal_update'),
     path('sujetos-procesales/eliminar/<int:pk>/', views.SujetoProcesalDeleteView.as_view(), name='sujetoprocesal_delete'),
+    path('sujetos-procesales/<int:pk>/archivar/', views.SujetoProcesalArchivarView.as_view(), name='sujetoprocesal_archivar'),
+    path('sujetos-procesales/<int:pk>/desarchivar/', views.SujetoProcesalDesarchivarView.as_view(), name='sujetoprocesal_desarchivar'),
     path('exportar/sujetos-procesales/', views.ExportarSujetosProcesalesExcelView.as_view(), name='exportar_sujetos_procesales'),
 ]

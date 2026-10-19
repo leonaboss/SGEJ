@@ -566,7 +566,7 @@ class CargoListView(CatalogRequiredMixin, ListView):
     context_object_name = 'asignaciones'
     paginate_by = 20
     def get_queryset(self):
-        qs = PersonaCargo.objects.filter(deleted_at__isnull=True, es_cargo_actual=True).select_related('personal', 'cargo')
+        qs = PersonaCargo.objects.filter(deleted_at__isnull=True, es_cargo_actual=True, cargo__is_archivado=False).select_related('personal', 'cargo')
         q = self.request.GET.get('q', '').strip()
         if q:
             qs = qs.filter(
@@ -575,11 +575,23 @@ class CargoListView(CatalogRequiredMixin, ListView):
                 models.Q(personal__apellidos__icontains=q) |
                 models.Q(personal__cedula__icontains=q)
             ).distinct()
+        fecha_desde = self.request.GET.get('fecha_desde', '').strip()
+        fecha_hasta = self.request.GET.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            qs = qs.filter(created_at__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(created_at__lte=f'{fecha_hasta} 23:59:59')
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['search_query'] = self.request.GET.get('q', '')
+        ctx['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        ctx['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        ctx['filtros_qs'] = query_params.urlencode()
         return ctx
 
 class CargoCreateView(CatalogRequiredMixin, View):
@@ -642,21 +654,30 @@ class MotivoListView(CatalogRequiredMixin, ListView):
     context_object_name = 'motivos'
     paginate_by = 20
     def get_queryset(self):
-        # Filtramos motivos activos y precargamos expedientes con su personal asociado
-        qs = Motivo.objects.for_user(self.request.user).filter(deleted_at__isnull=True).prefetch_related('expediente_set__personal')
-        
+        qs = Motivo.objects.for_user(self.request.user).filter(deleted_at__isnull=True, is_archivado=False).prefetch_related('expediente_set__personal')
         q = self.request.GET.get('q', '').strip()
         if q:
-            # Búsqueda por descripción o tipo
             qs = qs.filter(
                 models.Q(descripcion__icontains=q) |
                 models.Q(tipo__icontains=q)
             ).distinct()
+        fecha_desde = self.request.GET.get('fecha_desde', '').strip()
+        fecha_hasta = self.request.GET.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            qs = qs.filter(created_at__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(created_at__lte=f'{fecha_hasta} 23:59:59')
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['search_query'] = self.request.GET.get('q', '')
+        ctx['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        ctx['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        ctx['filtros_qs'] = query_params.urlencode()
         return ctx
 
 class MotivoCreateView(CatalogRequiredMixin, View):
@@ -719,7 +740,28 @@ class TribunalListView(CatalogRequiredMixin, ListView):
     context_object_name = 'tribunales'
     paginate_by = 20
     def get_queryset(self):
-        return Tribunal.objects.for_user(self.request.user).filter(deleted_at__isnull=True)
+        qs = Tribunal.objects.for_user(self.request.user).filter(deleted_at__isnull=True, is_archivado=False)
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(models.Q(nombre__icontains=q) | models.Q(tipo__icontains=q))
+        fecha_desde = self.request.GET.get('fecha_desde', '').strip()
+        fecha_hasta = self.request.GET.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            qs = qs.filter(created_at__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(created_at__lte=f'{fecha_hasta} 23:59:59')
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['search_query'] = self.request.GET.get('q', '')
+        ctx['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        ctx['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        ctx['filtros_qs'] = query_params.urlencode()
+        return ctx
 
 class TribunalCreateView(CatalogRequiredMixin, View):
     template_name = 'expedientes/tribunal_form.html'
@@ -772,6 +814,66 @@ class TribunalDeleteView(CatalogRequiredMixin, View):
         obj.deleted_at = timezone.now()
         obj.save(update_fields=['deleted_at'])
         messages.success(request, 'Tribunal eliminado.')
+        return redirect('expedientes:tribunal_list')
+
+
+class CargoArchivarView(CatalogRequiredMixin, View):
+    def post(self, request, pk):
+        obj = get_object_or_404(Cargo, pk=pk, deleted_at__isnull=True)
+        obj.is_archivado = True
+        obj.save(update_fields=['is_archivado'])
+        Actuacion.objects.create(content_object=obj, descripcion=f"Cargo '{obj}' archivado por {request.user.get_full_name()}", usuario=request.user)
+        messages.success(request, 'Cargo archivado exitosamente.')
+        return redirect('expedientes:cargo_list')
+
+
+class CargoDesarchivarView(CatalogRequiredMixin, View):
+    def post(self, request, pk):
+        obj = get_object_or_404(Cargo, pk=pk, deleted_at__isnull=True)
+        obj.is_archivado = False
+        obj.save(update_fields=['is_archivado'])
+        Actuacion.objects.create(content_object=obj, descripcion=f"Cargo '{obj}' desarchivado por {request.user.get_full_name()}", usuario=request.user)
+        messages.success(request, 'Cargo desarchivado exitosamente.')
+        return redirect('expedientes:cargo_list')
+
+
+class MotivoArchivarView(CatalogRequiredMixin, View):
+    def post(self, request, pk):
+        obj = get_object_or_404(Motivo, pk=pk, deleted_at__isnull=True)
+        obj.is_archivado = True
+        obj.save(update_fields=['is_archivado'])
+        Actuacion.objects.create(content_object=obj, descripcion=f"Motivo '{obj}' archivado por {request.user.get_full_name()}", usuario=request.user)
+        messages.success(request, 'Motivo archivado exitosamente.')
+        return redirect('expedientes:motivo_list')
+
+
+class MotivoDesarchivarView(CatalogRequiredMixin, View):
+    def post(self, request, pk):
+        obj = get_object_or_404(Motivo, pk=pk, deleted_at__isnull=True)
+        obj.is_archivado = False
+        obj.save(update_fields=['is_archivado'])
+        Actuacion.objects.create(content_object=obj, descripcion=f"Motivo '{obj}' desarchivado por {request.user.get_full_name()}", usuario=request.user)
+        messages.success(request, 'Motivo desarchivado exitosamente.')
+        return redirect('expedientes:motivo_list')
+
+
+class TribunalArchivarView(CatalogRequiredMixin, View):
+    def post(self, request, pk):
+        obj = get_object_or_404(Tribunal, pk=pk, deleted_at__isnull=True)
+        obj.is_archivado = True
+        obj.save(update_fields=['is_archivado'])
+        Actuacion.objects.create(content_object=obj, descripcion=f"Tribunal '{obj}' archivado por {request.user.get_full_name()}", usuario=request.user)
+        messages.success(request, 'Tribunal archivado exitosamente.')
+        return redirect('expedientes:tribunal_list')
+
+
+class TribunalDesarchivarView(CatalogRequiredMixin, View):
+    def post(self, request, pk):
+        obj = get_object_or_404(Tribunal, pk=pk, deleted_at__isnull=True)
+        obj.is_archivado = False
+        obj.save(update_fields=['is_archivado'])
+        Actuacion.objects.create(content_object=obj, descripcion=f"Tribunal '{obj}' desarchivado por {request.user.get_full_name()}", usuario=request.user)
+        messages.success(request, 'Tribunal desarchivado exitosamente.')
         return redirect('expedientes:tribunal_list')
 
 
@@ -1269,13 +1371,19 @@ class SujetoProcesalListView(CatalogRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = SujetoProcesal.objects.for_user(self.request.user).filter(deleted_at__isnull=True)
+        qs = SujetoProcesal.objects.for_user(self.request.user).filter(deleted_at__isnull=True, is_archivado=False)
         tipo = self.request.GET.get('tipo', '').strip()
         if tipo:
             qs = qs.filter(tipo=tipo)
         q = self.request.GET.get('q', '').strip()
         if q:
-            qs = qs.filter(models.Q(nombres__icontains=q) | models.Q(apellidos__icontains=q))
+            qs = qs.filter(models.Q(nombres__icontains=q) | models.Q(apellidos__icontains=q) | models.Q(cedula__icontains=q))
+        fecha_desde = self.request.GET.get('fecha_desde', '').strip()
+        fecha_hasta = self.request.GET.get('fecha_hasta', '').strip()
+        if fecha_desde:
+            qs = qs.filter(created_at__gte=fecha_desde)
+        if fecha_hasta:
+            qs = qs.filter(created_at__lte=f'{fecha_hasta} 23:59:59')
         return qs
 
     def get_context_data(self, **kwargs):
@@ -1283,6 +1391,12 @@ class SujetoProcesalListView(CatalogRequiredMixin, ListView):
         ctx['tipos'] = SujetoProcesal.TipoSujeto.choices
         ctx['tipo_filter'] = self.request.GET.get('tipo', '')
         ctx['search_query'] = self.request.GET.get('q', '')
+        ctx['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        ctx['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        ctx['filtros_qs'] = query_params.urlencode()
         ctx['export_url'] = reverse_lazy('expedientes:exportar_sujetos_procesales')
         return ctx
 
@@ -1327,6 +1441,26 @@ class SujetoProcesalDeleteView(CatalogRequiredMixin, View):
         obj.deleted_at = timezone.now()
         obj.save(update_fields=['deleted_at'])
         messages.success(request, 'Sujeto procesal eliminado lógicamente.')
+        return redirect('expedientes:sujetoprocesal_list')
+
+
+class SujetoProcesalArchivarView(CatalogRequiredMixin, View):
+    def post(self, request, pk):
+        obj = get_object_or_404(SujetoProcesal, pk=pk, deleted_at__isnull=True)
+        obj.is_archivado = True
+        obj.save(update_fields=['is_archivado'])
+        Actuacion.objects.create(content_object=obj, descripcion=f"Sujeto procesal '{obj}' archivado por {request.user.get_full_name()}", usuario=request.user)
+        messages.success(request, 'Sujeto procesal archivado exitosamente.')
+        return redirect('expedientes:sujetoprocesal_list')
+
+
+class SujetoProcesalDesarchivarView(CatalogRequiredMixin, View):
+    def post(self, request, pk):
+        obj = get_object_or_404(SujetoProcesal, pk=pk, deleted_at__isnull=True)
+        obj.is_archivado = False
+        obj.save(update_fields=['is_archivado'])
+        Actuacion.objects.create(content_object=obj, descripcion=f"Sujeto procesal '{obj}' desarchivado por {request.user.get_full_name()}", usuario=request.user)
+        messages.success(request, 'Sujeto procesal desarchivado exitosamente.')
         return redirect('expedientes:sujetoprocesal_list')
 
 

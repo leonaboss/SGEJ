@@ -42,6 +42,7 @@ class SujetoProcesal(models.Model):
         null=True, blank=True, verbose_name='Usuario creador'
     )
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -76,6 +77,7 @@ class Personal(models.Model):
         null=True, blank=True, verbose_name='Usuario creador', related_name='personal_creado'
     )
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -112,6 +114,7 @@ class Cargo(models.Model):
         null=True, blank=True, verbose_name='Usuario creador'
     )
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -132,6 +135,7 @@ class PersonaCargo(models.Model):
     fecha_fin = models.DateField(blank=True, null=True)
     es_cargo_actual = models.BooleanField(default=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -152,6 +156,7 @@ class Motivo(models.Model):
         null=True, blank=True, verbose_name='Usuario creador'
     )
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -177,6 +182,7 @@ class Tribunal(models.Model):
         null=True, blank=True, verbose_name='Usuario creador'
     )
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -296,6 +302,7 @@ class Expediente(models.Model):
     # Soft delete
     is_archivado = models.BooleanField(default=False, db_column='is_archivado')
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -338,6 +345,7 @@ class Actuacion(models.Model):
         'usuarios.Usuario', on_delete=models.PROTECT, db_column='usuario_id'
     )
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -378,6 +386,7 @@ class AudienciaAgenda(models.Model):
     notificado_60 = models.BooleanField(default=False)
     notificado_90 = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -397,6 +406,7 @@ class LitigioContraparte(models.Model):
     datos_contacto = models.TextField(blank=True, null=True)
     es_abogado = models.BooleanField(default=True, verbose_name='Es abogado')
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -445,6 +455,7 @@ class SustanciacionNotificacion(models.Model):
     )
     huella_digital_hash = models.CharField(max_length=64, blank=True, null=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
+    is_archivado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

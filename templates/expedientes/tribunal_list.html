@@ -29,6 +29,30 @@
             <a href="{% url 'expedientes:tribunal_create' %}" class="btn btn-dark btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo Tribunal</a>
         </div>
     </div>
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-2">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="small text-muted mb-1">Buscar</label>
+                    <input type="text" id="search-input" name="q" class="form-control form-control-sm" placeholder="Buscar tribunal..." value="{{ search_query }}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="small text-muted mb-1">Desde</label>
+                    <input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="small text-muted mb-1">Hasta</label>
+                    <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}">
+                </div>
+                <div class="col-12 col-md-2 d-flex gap-1">
+                    <button type="submit" class="btn btn-dark btn-sm w-100"><i class="bi bi-filter me-1"></i>Filtrar</button>
+                    {% if search_query or fecha_desde or fecha_hasta %}
+                    <a href="{% url 'expedientes:tribunal_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-lg"></i></a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table id="tribunal-table" class="table table-hover align-middle mb-0">
@@ -39,8 +63,13 @@
                         <td>{{ t.nombre }}</td>
                         <td><span class="badge bg-info">{{ t.get_tipo_display }}</span></td>
                         <td>
-                            <a href="{% url 'expedientes:tribunal_update' t.pk %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-pencil"></i></a>
-                            <form method="post" action="{% url 'expedientes:tribunal_delete' t.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button></form>
+                            <a href="{% url 'expedientes:tribunal_update' t.pk %}" class="btn btn-outline-dark btn-sm" title="Editar"><i class="bi bi-pencil"></i></a>
+                            {% if t.is_archivado %}
+                            <form method="post" action="{% url 'expedientes:tribunal_desarchivar' t.pk %}" class="d-inline">{% csrf_token %}<button type="submit" class="btn btn-outline-success btn-sm" title="Desarchivar"><i class="bi bi-box-arrow-in-up"></i></button></form>
+                            {% else %}
+                            <form method="post" action="{% url 'expedientes:tribunal_archivar' t.pk %}" class="d-inline" onsubmit="return confirm('¿Archivar este tribunal?');">{% csrf_token %}<button type="submit" class="btn btn-outline-warning btn-sm" title="Archivar"><i class="bi bi-archive"></i></button></form>
+                            {% endif %}
+                            <form method="post" action="{% url 'expedientes:tribunal_delete' t.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar"><i class="bi bi-trash"></i></button></form>
                         </td>
                     </tr>
                     {% empty %}<tr><td colspan="3" class="text-center text-muted py-4">No hay tribunales registrados.</td></tr>

@@ -13,6 +13,30 @@
             <a href="{% url 'expedientes:cargo_create' %}" class="btn btn-outline-dark btn-sm"><i class="bi bi-briefcase me-1"></i>Nuevo Tipo de Cargo</a>
         </div>
     </div>
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-2">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label class="small text-muted mb-1">Buscar</label>
+                    <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar cargo o personal..." value="{{ search_query }}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="small text-muted mb-1">Desde</label>
+                    <input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="small text-muted mb-1">Hasta</label>
+                    <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}">
+                </div>
+                <div class="col-12 col-md-2 d-flex gap-1">
+                    <button type="submit" class="btn btn-dark btn-sm w-100"><i class="bi bi-filter me-1"></i>Filtrar</button>
+                    {% if search_query or fecha_desde or fecha_hasta %}
+                    <a href="{% url 'expedientes:cargo_list' %}" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-lg"></i></a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -37,6 +61,11 @@
                         <td>
                             <a href="{% url 'expedientes:personacargo_update' pc.pk %}" class="btn btn-outline-dark btn-sm" title="Editar Asignación"><i class="bi bi-pencil"></i></a>
                             <a href="{% url 'expedientes:cargo_update' pc.cargo.pk %}" class="btn btn-outline-secondary btn-sm" title="Editar Tipo de Cargo"><i class="bi bi-briefcase"></i></a>
+                            {% if pc.cargo.is_archivado %}
+                            <form method="post" action="{% url 'expedientes:cargo_desarchivar' pc.cargo.pk %}" class="d-inline">{% csrf_token %}<button type="submit" class="btn btn-outline-success btn-sm" title="Desarchivar cargo"><i class="bi bi-box-arrow-in-up"></i></button></form>
+                            {% else %}
+                            <form method="post" action="{% url 'expedientes:cargo_archivar' pc.cargo.pk %}" class="d-inline" onsubmit="return confirm('¿Archivar este cargo?');">{% csrf_token %}<button type="submit" class="btn btn-outline-warning btn-sm" title="Archivar cargo"><i class="bi bi-archive"></i></button></form>
+                            {% endif %}
                             <form method="post" action="{% url 'expedientes:personacargo_delete' pc.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar esta asignación?');">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar"><i class="bi bi-trash"></i></button></form>
                         </td>
                     </tr>
