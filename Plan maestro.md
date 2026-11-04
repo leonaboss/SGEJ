@@ -2,7 +2,7 @@ PLAN DE DESARROLLO: Sistema de Gestor de expedientes juridicos(SGEJ)
 1. Visión General
 Sistema centralizado de automatización y auditoría para Consultoría Jurídica.
 
-Arquitectura: Monolito modular con separación estricta de dominios (Domain-Driven Design).
+Arquitectura: Monolito Modular con separación estricta de dominios mediante Contextos Delimitados (*Bounded Contexts*), aplicando **Domain-Driven Design (DDD)** como metodología de diseño y modelado de dominio.
 
 Backend: Python 3.11 + Django (Framework) + Django Rest Framework (API).
 
@@ -49,7 +49,7 @@ En Tránsito: Forzar HTTPS/TLS.
 En Reposo: Implementar servicio en services.py que utilice cryptography.fernet para cifrar archivos antes de su almacenamiento físico.
 
 Capa de Auditoría e Integridad
-Inmutabilidad: La bitacora_auditoria no permite actualizaciones (update) ni eliminaciones (delete) a nivel de aplicación. Solo inserciones.
+Inmutabilidad: La tabla `bitacora_auditoria` está protegida en dos niveles: a nivel de aplicación (`AuditoriaInmutableMiddleware` bloquea cualquier lógica de UPDATE/DELETE permitiendo únicamente inserciones) y a nivel de base de datos (restringiendo permisos de UPDATE/DELETE en MySQL para garantizar un almacenamiento *Append-Only*).
 
 Honeypot: Inserción de registros trampa en la bitácora para detectar intentos de inyección o manipulación no autorizada.
 

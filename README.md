@@ -1,14 +1,15 @@
 # ⚖️ SGEJ — Sistema de Gestor de Expedientes Jurídicos
 Arquitectura Modular del Software y Requerimientos  
+**Estilo Arquitectónico:** Monolito Modular con Contextos Delimitados (*Bounded Contexts*)  
 **Stack Tecnológico:** Django 5.2 + DRF + MySQL 8.0 + Bootstrap 5 + Criptografía AES/Fernet + Docker
 
 ---
 
 ## 🌟 Descripción General & Filosofía del Sistema
 
-El **SGEJ (Sistema de Gestor de Expedientes Jurídicos)** es una obra maestra de ingeniería de software monolítica modular desarrollada bajo estrictos principios de **Domain-Driven Design (DDD)**. Es una plataforma robusta, elegante y de altísimo rendimiento diseñada para automatizar, blindar y simplificar el ciclo de vida completo de la gestión jurídica institucional, universitaria o corporativa. 
+El **SGEJ (Sistema de Gestor de Expedientes Jurídicos)** es una plataforma monolítica modular de alto rendimiento desarrollada aplicando **Domain-Driven Design (DDD)** como metodología de diseño y modelado de dominio, estructurada sobre una arquitectura de **Monolito Modular**. Su propósito es automatizar, blindar y gestionar de manera integral el ciclo de vida completo de la gestión jurídica institucional.
 
-Desde la recepción automatizada de expedientes y la sustanciación de procedimientos disciplinarios hasta el cifrado forense de documentos at-rest, la firma digital con códigos QR y la auditoría inmutable en tiempo real, el SGEJ ofrece una experiencia de usuario impecable combinada con los más altos estándares arquitectónicos del desarrollo moderno. ¡Deleítate explorando un software diseñado para trascender!
+Desde la recepción y clasificación de expedientes y la sustanciación de procedimientos disciplinarios hasta el cifrado forense de documentos *at-rest*, la firma digital con códigos QR y la bitácora de auditoría inmutable, el SGEJ garantiza rigor técnico, trazabilidad y cumplimiento de los más altos estándares de ingeniería de software moderna.
 
 ---
 
@@ -16,55 +17,59 @@ Desde la recepción automatizada de expedientes y la sustanciación de procedimi
 
 El **SGEJ** ha sido construido bajo ciberseguridad defensiva de nivel empresarial, alineándose con las directrices **OWASP Top 10** y aplicando mitigaciones avanzadas a nivel de aplicación e infraestructura:
 
-- **Cifrado Criptográfico At-Rest (AES / Fernet)**: Todos los documentos y archivos binarios confidenciales son cifrados antes de almacenarse en disco, impidiendo el acceso no autorizado sin la clave de cifrado institucional.
-- **Bitácora de Auditoría Inmutable (SHA-256 Chained)**: Registro forense inalterable de todas las operaciones del sistema, protegido por middleware que bloquea estrictamente cualquier instrucción `UPDATE` o `DELETE` a nivel de base de datos.
-- **Autenticación de Doble Factor (2FA / TOTP)**: Integración nativa con generadores de códigos temporales (Google Authenticator, FreeOTP) para cuentas privilegiadas.
-- **Gestión de Identidad y RBAC Estricto**: Control de acceso basado en roles (`ADMIN`, `ABOG`, `USR_PUBLICO`) con aislamiento absoluto de datos mediante `BaseQuerySet`.
-- **Protección contra Fuerza Bruta y Ataques**: Bloqueo automático de cuentas tras múltiples intentos fallidos de inicio de sesión, control de concurrencia de sesiones (`SessionControlMiddleware`) y límites de peticiones (`RateLimiting`).
+- **Cifrado Criptográfico At-Rest (AES / Fernet)**: Todos los documentos y archivos binarios confidenciales son cifrados simétricamente antes de almacenarse en disco, impidiendo el acceso no autorizado sin la clave de cifrado institucional.
+- **Bitácora de Auditoría Inmutable (SHA-256 Chained)**: Registro forense inalterable de todas las transacciones del sistema. Su inmutabilidad está garantizada en **dos niveles críticos**:
+  1. *Nivel de Aplicación*: A través del `AuditoriaInmutableMiddleware`, que intercepta peticiones y prohíbe cualquier lógica de modificación (`UPDATE`) o eliminación (`DELETE`), permitiendo estrictamente operaciones de inserción (`INSERT`).
+  2. *Nivel de Base de Datos*: Restricción de privilegios del usuario de conexión en MySQL (restringiendo permisos de actualización y borrado sobre la tabla `bitacora_auditoria`), configurando un almacenamiento de tipo *Append-Only Store*.
+- **Autenticación de Doble Factor (2FA / TOTP)**: Integración nativa con generadores de códigos temporales (Google Authenticator, FreeOTP) para cuentas con privilegios administrativos.
+- **Gestión de Identidad y RBAC Estricto**: Control de acceso basado en roles (`ADMIN`, `ABOG`, `USR_PUBLICO`) con aislamiento absoluto de datos mediante filtrado granular en consultas ORM (`BaseQuerySet`).
+- **Protección contra Fuerza Bruta y Ataques**: Bloqueo automático de cuentas tras 3 intentos fallidos consecutivos de inicio de sesión, control de concurrencia de sesiones (`SessionControlMiddleware`) y limitación de peticiones (`RateLimiting`).
 - **Sistema Honeypot de Intrusos**: Trampas virtuales integradas en rutas críticas para identificar y registrar accesos maliciosos o sondeos automatizados.
-- **Seguridad de Credenciales**: Hashing con `Argon2` / `PBKDF2` e historial inmutable de contraseñas que impide la reutilización de las últimas 3 claves.
+- **Seguridad de Credenciales**: Hashing con algoritmos de una sola vía (PBKDF2 / SHA-256) e historial inmutable de contraseñas que impide la reutilización de las últimas 3 claves.
 
 ---
 
-## ⚙️ Arquitectura de Módulos del Sistema (Explicación Funcional)
+## ⚙️ Arquitectura de Contextos Delimitados (*Bounded Contexts*)
 
-El sistema está estructurado en 5 grandes aplicaciones (módulos) independientes y cohesivas:
+Bajo los principios de **Domain-Driven Design (DDD)**, el sistema descompone el dominio del problema en **Contextos Delimitados (*Bounded Contexts*)** independientes y cohesivos, cada uno encapsulando su propio lenguaje ubicuo, modelos de dominio, reglas de negocio y servicios:
 
-### 1. Módulo de Autenticación, Usuarios y Seguridad (`apps/usuarios`)
-- **¿Qué hace?**: Administra el ciclo de vida de los usuarios del sistema, control de acceso basado en roles (RBAC: `ADMIN`, `ABOG`, `USR_PUBLICO`), autenticación de doble factor (2FA/TOTP), preguntas de seguridad para recuperación, historial inmutable de contraseñas y la bitácora de auditoría inmutable con hashes encadenados.
+### 1. Bounded Context de Autenticación, Usuarios y Seguridad (`apps/usuarios`)
+- **Propósito y Dominio**: Administra el ciclo de vida de la identidad y el acceso. Implementa el control de acceso basado en roles (RBAC: `ADMIN`, `ABOG`, `USR_PUBLICO`), autenticación de doble factor (2FA/TOTP), frase de seguridad para recuperación, políticas de contraseñas y la supervisión de intentos fallidos con bloqueo automático.
 
-### 2. Módulo del Núcleo Jurídico y Expedientes (`apps/expedientes`)
-- **¿Qué hace?**: Es el motor principal del negocio jurídico. Gestiona los expedientes principales, directorios de personal, cargos institucionales, motivos de reclamo, tribunales y la agenda de audiencias con alertas automatizadas. Además, centraliza el directorio de **Sujetos Procesales** (Defensores, Fiscales, Jueces, Secretarios y Contrapartes).
+### 2. Bounded Context del Núcleo Jurídico y Procesal (`apps/expedientes`)
+- **Propósito y Dominio**: Núcleo central del negocio jurídico. Modela expedientes, directorios de personal, cargos institucionales vinculados a marcos legales, motivos de reclamo, tribunales y la agenda de audiencias con notificaciones automatizadas. Gestiona formalmente el directorio de **Sujetos Procesales** (Defensores, Fiscales, Jueces, Secretarios y Contrapartes).
 
-### 3. Módulo de Gestión Documental y Cifrado (`apps/documentos`)
-- **¿Qué hace?**: Controla la subida, almacenamiento seguro y cifrado en disco (AES/Fernet) de todos los archivos y documentos. Valida la integridad mediante hashes SHA-256 en cada descarga, administra firmas digitales, códigos QR de autenticidad, plantillas Word (`.docx`) para generación automatizada de escritos, búsqueda Full-Text con OCR (Tesseract) y marcas de agua dinámicas en PDFs.
+### 3. Bounded Context de Gestión Documental y Cifrado (`apps/documentos`)
+- **Propósito y Dominio**: Controla la ingesta, almacenamiento y cifrado simétrico en disco (`AES-256 / Fernet`) de todos los archivos institucionales.
+  - *Proceso de Descifrado, Búsqueda y Entrega*: Al solicitar la visualización o descarga, el servicio descifra el flujo binario en memoria RAM de manera efímera sin exponer archivos planos en el disco temporal, valida el hash de integridad `SHA-256`, serializa los metadatos y entrega el recurso con una latencia óptima menor a **300ms**.
+  - *Procesamiento OCR*: Documentos escaneados, oficios físicos digitalizados y resoluciones en PDF sin capa de texto son procesados mediante **Tesseract OCR**, indexando su contenido en el campo `contenido_ocr` de MySQL para permitir búsquedas de texto completo eficientes.
 
-### 4. Módulo de Biblioteca Legal y Normativa (`apps/biblioteca`)
-- **¿Qué hace?**: Funciona como un repositorio institucional centralizado para almacenar y consultar normativas, reglamentos internos, resoluciones de consejo universitario y gacetas oficiales vinculables directamente a los expedientes.
+### 4. Bounded Context de Biblioteca Legal y Normativa (`apps/biblioteca`)
+- **Propósito y Dominio**: Repositorio institucional centralizado para almacenar y consultar normativas, reglamentos internos, resoluciones de consejo universitario y gacetas oficiales vinculables como sustento jurídico a los expedientes.
 
-### 5. Módulo de Infraestructura y Middleware (`apps/infraestructura`)
-- **¿Qué hace?**: Provee los servicios transversales de seguridad defensiva, control de límites de peticiones (Rate Limiting), control de sesiones concurrentes y el sistema trampa (Honeypot) para detección de intrusos.
+### 5. Bounded Context de Infraestructura Transversal (`apps/infraestructura`)
+- **Propósito y Dominio**: Provee los servicios transversales de seguridad defensiva, control de límites de peticiones (*Rate Limiting*), control de sesiones concurrentes y el sistema trampa (*Honeypot*) para detección de intrusos.
 
 ---
 
 ## 📂 Submódulos y Tipos de Módulos de Expedientes (`tipo_modulo`)
 
-El núcleo de expedientes (`apps/expedientes`) clasifica la operatividad legal en **7 submódulos especializados**, cada uno con campos y flujos específicos:
+En estricto apego al Lenguaje Ubicuo del dominio jurídico, el agregado raíz `Expediente` (`apps/expedientes`) clasifica la operatividad legal en **7 submódulos especializados**, organizados bajo principios de Clean Code:
 
 1. **`DESP` — Calificación de Despido / Casos Recientes**:
-   - *¿Qué hace?*: Gestiona expedientes urgentes relativos a solicitudes de calificación de despido, reenganches y procedimientos laborales prioritarios del personal.
+   - *Dominio*: Gestión de expedientes urgentes relativos a solicitudes de calificación de despido, reenganches y procedimientos laborales prioritarios.
 2. **`INSP` — Casos de Inspectoría / Horas Extra / Reclamos**:
-   - *¿Qué hace?*: Administra reclamaciones salariales, cálculo y pago de horas extra, bonificaciones y expedientes derivados de inspecciones laborales.
+   - *Dominio*: Administración de reclamaciones salariales, cálculo y pago de horas extra, bonificaciones y expedientes derivados de inspecciones laborales.
 3. **`OFIC` — Expedientes en Oficina Consultoría Jurídica**:
-   - *¿Qué hace?*: Agrupa dictámenes jurídicos, consultas institucionales, opiniones legales y expedientes generales tramitados por la consultoría jurídica interna.
+   - *Dominio*: Agrupación de dictámenes jurídicos, consultas institucionales, opiniones legales y expedientes generales de la consultoría jurídica interna.
 4. **`CONT` — Contrataciones y Convenios de la Universidad**:
-   - *¿Qué hace?*: Registra convenios interinstitucionales, contratos colectivos, instituciones aliadas, duración, tipos de convenio y fechas de vencimiento.
+   - *Dominio*: Registro de convenios interinstitucionales, contratos colectivos, instituciones aliadas, duración, tipos de convenio y fechas de vencimiento.
 5. **`LITI` — Litigios Judiciales y Administrativos**:
-   - *¿Qué hace?*: Controla demandas judiciales o administrativas, juzgados/tribunales asociados (`Tribunal`), fechas de demanda, tipos de demanda y abocamiento de los abogados de la contraparte (`LitigiosContraparte`).
+   - *Dominio*: Control de demandas judiciales o administrativas, juzgados/tribunales asociados (`Tribunal`), fechas de demanda, tipos de demanda y abocamiento de abogados de la contraparte (`LitigiosContraparte`).
 6. **`SUST` — Sustanciación de Procedimientos Disciplinarios**:
-   - *¿Qué hace?*: Administra expedientes sancionatorios o disciplinarios al personal. Incluye cronómetros límite, horas, lugares del procedimiento y seguimiento detallado por **fases procesales**: *Auto de Inicio* (`INICIO`), *Periodo Probatorio* (`PRUEBAS`) y *Conclusiones / Dictamen* (`CONCL`).
+   - *Dominio*: Administración de expedientes sancionatorios al personal. Incluye cronómetros límite, horas, lugares y seguimiento detallado por **fases procesales**: *Auto de Inicio* (`INICIO`), *Periodo Probatorio* (`PRUEBAS`) y *Conclusiones / Dictamen* (`CONCL`).
 7. **`IND` — Índices de Inspectoría del Trabajo**:
-   - *¿Qué hace?*: Archivo y control de índices, estadísticas y expedientes catalogados bajo normativas e índices formales de inspectoría.
+   - *Dominio*: Archivo y control de índices, estadísticas y expedientes catalogados bajo normativas formales de inspectoría.
 
 ---
 
